@@ -6,7 +6,7 @@ let createProxyTester;
 
 
 
-const ytdl = require("@distube/ytdl-core");
+const ytdl = require("@ybd-project/ytdl-core");
 
 const ProxyAgent = require("proxy-agent-v2");
 
@@ -45,15 +45,15 @@ function checkProxies(proxies) {
         let workingOn = []
 
         setTimeout(() => {
-            for (let proxy of workingOn) {
-                proxyStats.bad.push({ url: proxy.url, err: `proxy is too slow, last stage: ${proxy.stage}` })
-                proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy.url)
-
+            if (!resolved) {
+                for (let proxy of workingOn) {
+                    proxyStats.bad.push({ url: proxy.url, err: `proxy is too slow, last stage: ${proxy.stage}` })
+                    proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy.url)
+                }
                 io.emit("newProxiesStats", proxyStats)
-                return
+                resolved = true
+                resolve()
             }
-
-            if (!resolved) resolve()
         }, ((settings.timeout * 1000) + 1000) * 3)
 
         for (let proxy of proxies) {
@@ -77,7 +77,7 @@ function checkProxies(proxies) {
                         throw error
                     }
 
-                    let currentWorkingOn = workingOn.findIndex((v) => v.url = proxy);
+                    let currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
                     workingOn[currentWorkingOn].stage = "checking proxy format (1)"
 
                     let urlStatus = tester.testProxyURL(proxy);
@@ -89,7 +89,7 @@ function checkProxies(proxies) {
                         return
                     }
 
-                    currentWorkingOn = workingOn.findIndex((v) => v.url = proxy);
+                    currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
                     workingOn[currentWorkingOn].stage = "checking proxy privacy (2)"
 
                     let privacy = await tester.testPrivacy().catch(() => onError("timeout checking proxy privacy"))
@@ -101,7 +101,7 @@ function checkProxies(proxies) {
                         return
                     }
 
-                    currentWorkingOn = workingOn.findIndex((v) => v.url = proxy);
+                    currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
                     workingOn[currentWorkingOn].stage = "checking www.youtube.com connection (3)"
 
                     let test1Result = await tester.fastTest(`https://www.youtube.com`).catch(() => onError("timeout connecting to youtube servers"))
@@ -116,7 +116,7 @@ function checkProxies(proxies) {
                     await new Promise((resolve, reject) => {
                         let resolved = false
 
-                        currentWorkingOn = workingOn.findIndex((v) => v.url = proxy);
+                        currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
                         workingOn[currentWorkingOn].stage = "11 megabits youtube video download (4)"
 
                         /*try {
@@ -172,13 +172,14 @@ function checkProxies(proxies) {
                     finished++
 
                     if (!resolved) {
-                        if (error.includes("timeout")) {
-                            proxyStats.bad.push({ url: proxy, err: error })
+                        let errMsg = typeof error === "string" ? error : (error && error.message) || "unknown error";
+                        if (errMsg.includes("timeout")) {
+                            proxyStats.bad.push({ url: proxy, err: errMsg })
                             proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
 
                             io.emit("newProxiesStats", proxyStats)
                         } else {
-                            proxyStats.bad.push({ url: proxy, err: error.message })
+                            proxyStats.bad.push({ url: proxy, err: errMsg })
                             proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
 
                             io.emit("newProxiesStats", proxyStats)

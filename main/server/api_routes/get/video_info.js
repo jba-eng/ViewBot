@@ -1,4 +1,5 @@
-const ytdl = require('@distube/ytdl-core');
+const { YtdlCore } = require('@ybd-project/ytdl-core');
+const ytdl = new YtdlCore();
 const rumble = require("rumble-core")
 
 let cache = {}
@@ -10,42 +11,48 @@ function getYoutubeID(url) {
 
     if (found && found.length > 1 && found[3]) {
         url = found[3]
+    }
 
-        if (url.length >= 10 && url.length <= 12) {
-            return url
-        }
-    } else {
-        if (url.length >= 10 && url.length <= 12) {
-            return url
-        }
+    if (/^[a-zA-Z0-9_-]{10,12}$/.test(url)) {
+        return url
     }
 
     return null
 }
 
 function handleYoutube(id, req, res){
-    ytdl.getInfo(id).then((videoInfo) => {
-        let vFormats = videoInfo.formats.filter((v) => v.width && v.height)
+    ytdl.getBasicInfo(id, { includesOriginalFormatData: true }).then((videoInfo) => {
+        if (videoInfo.formats) {
+            for (let format of videoInfo.formats) {
+                if (format.originalData) {
+                    format.width = format.originalData.width;
+                    format.height = format.originalData.height;
+                    format.qualityLabel = format.originalData.qualityLabel;
+                    format.fps = format.originalData.fps;
+                }
+            }
+        }
+        let vFormats = videoInfo.formats ? videoInfo.formats.filter((v) => v.width && v.height) : []
         let vFormat = vFormats.sort((a, b) => a.width - b.width).shift()
         let max_vFormat = vFormats.sort((a, b) => a.width - b.width).pop()
 
         let thumbnails = videoInfo.videoDetails.thumbnails
-        let isShort = (vFormat.width / vFormat.height) < 1
-        let isLive = videoInfo.videoDetails.isLiveContent && videoInfo.videoDetails.liveBroadcastDetails.isLiveNow
+        let isShort = vFormat ? (vFormat.width / vFormat.height) < 1 : false
+        let isLive = videoInfo.videoDetails.isLiveContent && videoInfo.videoDetails.liveBroadcastDetails && videoInfo.videoDetails.liveBroadcastDetails.isLiveNow
 
         let result = {
             isRumble: false,
             title: videoInfo.videoDetails.title,
-            thumbnail: thumbnails[thumbnails.length - 1].url,
+            thumbnail: thumbnails && thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : "",
             videoType: (isLive && "livestream") || (isShort && "short") || "normal",
             uploadDate: new Date(videoInfo.videoDetails.uploadDate),
-            duration: parseFloat(videoInfo.videoDetails.lengthSeconds),
+            duration: parseFloat(videoInfo.videoDetails.lengthSeconds) || 0,
 
             validFilters: {
-                is4K: max_vFormat.height >= 1440,
-                isHD: max_vFormat.height >= 1080,
+                is4K: max_vFormat ? max_vFormat.height >= 1440 : false,
+                isHD: max_vFormat ? max_vFormat.height >= 1080 : false,
                 //is3D: videoInfo.formats.some(format => format.videoDetails && format.videoDetails.projectionType && format.videoDetails.projectionType !== "RECTANGULAR"),
-                isHDR: max_vFormat.colorInfo && max_vFormat.colorInfo.primaries == "COLOR_PRIMARIES_BT709",
+                isHDR: max_vFormat && max_vFormat.colorInfo ? max_vFormat.colorInfo.primaries == "COLOR_PRIMARIES_BT709" : false,
             }
         }
 
@@ -56,16 +63,23 @@ function handleYoutube(id, req, res){
     }).catch((err) => {
         //db_insert_video.run("false", id)
         //blacklist.push(id)
+        console.error("handleYoutube ERROR:", err);
 
         res.sendStatus(404)
     })
 }
 
 function getRumbleID(url) {
+    if (url.includes("youtube") || url.includes("youtu.be")) {
+        return null;
+    }
+
     let found = url.split("/").pop().split("-").shift()
 
     if (found && found.length >= 5 && found.length <= 8) {
-        return found
+        if (/^[a-zA-Z0-9]+$/.test(found)) {
+            return found
+        }
     }
 
     return null
@@ -73,9 +87,9 @@ function getRumbleID(url) {
 
 function handleRumble(id, req, res){
     rumble.getInfo(id).then((videoInfo) => {
-        let vFormat = videoInfo.video.formats.sort((a, b) => a.width - b.width).shift()
+        let vFormat = videoInfo.video.formats ? videoInfo.video.formats.sort((a, b) => a.width - b.width).shift() : null
 
-        let isShort = (vFormat.width / vFormat.height) < 1
+        let isShort = vFormat ? (vFormat.width / vFormat.height) < 1 : false
         let isLive = videoInfo.live
 
         let result = {
@@ -87,8 +101,8 @@ function handleRumble(id, req, res){
             duration: videoInfo.video.duration,
 
             validFilters: {
-                is4K: vFormat.height >= 1440,
-                isHD: vFormat.height >= 1080,
+                is4K: vFormat ? vFormat.height >= 1440 : false,
+                isHD: vFormat ? vFormat.height >= 1080 : false,
             }
         }
 
@@ -100,6 +114,7 @@ function handleRumble(id, req, res){
         //console.log(err)
         //db_insert_video.run("false", id)
         //blacklist.push(id)
+        console.error("handleRumble ERROR:", err);
 
         res.sendStatus(404)
     })

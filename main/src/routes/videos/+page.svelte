@@ -142,7 +142,7 @@
 		}}>Add Video</button
 	>
 
-	<div class="videos_parent">
+	<div class="videos_parent" on:input={() => videos = videos} on:change={() => videos = videos}>
 		<div class="videos_container">
 			{#each videos as video, index}
 				<div class="video_container settings_container {(videoInfo[video.id] || {}).isRumble ? 'container_gray_green' : 'container_gray'}">
@@ -438,7 +438,7 @@ https://www.x.com"
 										cookies: ''
 									});
 
-									video = video;
+									videos = videos;
 								}}>Add account</button
 							>
 
@@ -495,7 +495,7 @@ https://www.x.com"
 										class="video_id"
 										on:click={() => {
 											video.accounts.splice(acc_index, 1);
-											video.accounts = video.accounts;
+											videos = videos;
 										}}>#{acc_index + 1}</button
 									>
 									{#if acc_index == 0}
@@ -513,6 +513,7 @@ https://www.x.com"
 												placeholder="Email"
 												type="text"
 												bind:value={account.email}
+												on:input={() => videos = videos}
 											/>
 										</div>
 
@@ -532,6 +533,7 @@ https://www.x.com"
 												placeholder="Password"
 												type="text"
 												bind:value={account.password}
+												on:input={() => videos = videos}
 											/>
 										</div>
 
@@ -549,6 +551,7 @@ https://www.x.com"
 												placeholder="Cookies"
 												type="text"
 												bind:value={account.cookies}
+												on:input={() => videos = videos}
 											/>
 										</div>
 
@@ -587,18 +590,6 @@ https://www.x.com"
 								{/if}
 							</div>
 							
-							<div class="setting_div">
-								<div class="same_line">
-									<h2 class="setting_name">Subscribe at:</h2>
-
-									<Slider max="100" bind:value={video.subscribeAt} range order />
-								</div>
-
-								{#if index == 0}
-									<p class="setting_info">When should each account subscribe?</p>
-								{/if}
-							</div>
-
 							<div class="setting_div">
 								<div class="same_line">
 									<h2 class="setting_name">Subscribe at:</h2>
@@ -684,7 +675,7 @@ https://www.x.com"
 									on:click={() => {
 										video.comments.unshift('Hello world');
 
-										video = video;
+										videos = videos;
 									}}>Add comment</button
 								>
 
@@ -740,11 +731,11 @@ https://www.x.com"
 												class="video_id"
 												on:click={() => {
 													video.comments.splice(comment_index, 1);
-													video.comment = video.comments;
+													videos = videos;
 												}}>#{comment_index + 1}</button
 											>
 
-											<textarea class="setting_text comment_text" cols="50" bind:value={comment} />
+											<textarea class="setting_text comment_text" cols="50" bind:value={comment} on:input={() => videos = videos} />
 										</div>
 									{/each}
 								</div>

@@ -3,7 +3,6 @@
     "forge": {
       "packagerConfig": {},
       "makers": [
-        
         {
           "name": "@electron-forge/maker-zip",
           "platforms": [
@@ -78,10 +77,10 @@
     "vite": "^4.0.0"
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.14.4",
     "@electron-forge/maker-dmg": "^7.4.0",
     "@sveltejs/adapter-node": "^1.1.4",
     "@sveltejs/adapter-static": "^1.0.5",
+    "@ybd-project/ytdl-core": "^6.0.8",
     "ansicolor": "^1.1.100",
     "await-to-js": "^3.0.0",
     "axios": "^1.2.3",

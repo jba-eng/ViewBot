@@ -1,3 +1,5 @@
+process.env.FINGERPRINT_TIMEOUT = process.env.FINGERPRINT_TIMEOUT || '300000';
+
 let youtube_selfbot_api;
 let rumble_selfbot_api;
 

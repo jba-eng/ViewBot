@@ -121,19 +121,16 @@ async function startWorking() {
             }
             break
         case 1: // Start proxy testing and create workers on test success
-            if (proxies.length < 1) {
-                workingStatus = 0
-                io.emit("workerStatusChanged", workingStatus)
-                startWorking(0)
-
-                return
+            let activeProxies = proxies.map(p => p.trim()).filter(p => p.length > 0);
+            if (activeProxies.length === 0) {
+                activeProxies = ["direct://"];
             }
 
             wasChecking = true
 
             let old_good_proxies = JSON.parse((await dbGet(`SELECT data FROM good_proxies WHERE id = 1`)).data);
 
-            for (let proxy of proxies) {
+            for (let proxy of activeProxies) {
                 if (proxy.length >= 4) {
                     proxy = proxy.trim()
 
@@ -180,8 +177,19 @@ async function startWorking() {
                         }
                     }
 
-                    workingStatus = 2
-                    startWorking(2)
+                    if (jobs.length > 0) {
+                        workingStatus = 2
+                        startWorking(2)
+                    } else {
+                        io.emit("showMessage", {
+                            title: "Start Workers Failed",
+                            text: "No jobs could be generated. Please make sure you have added videos and have at least one working proxy (or 'direct://' to run without proxies).",
+                            button1text: "OK",
+                            secondButton: false
+                        })
+                        workingStatus = 0
+                        startWorking(0)
+                    }
                 }
             })
 

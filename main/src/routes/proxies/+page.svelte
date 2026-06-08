@@ -173,7 +173,7 @@
 	<div class="same_line">
 		<input class="setting_text" type="text" bind:value={single_proxy} placeholder="Add single proxy" />
 		<button class="setting_button" on:click={addSingleProxy}>Add</button>
-		<input bind:this={import_file_input} type="file" accept=".txt" style="margin-left: 5%;" on:change={(e:any)=>importProxiesFromFile(e.target?.files)} />
+		<input bind:this={import_file_input} type="file" accept=".txt" style="margin-left: 5%;" on:change={(e)=>importProxiesFromFile(e.target?.files)} />
 		<button class="setting_button" on:click={() => import_file_input?.click()}>Import file</button>
 	</div>
 	<div class="same_line" style="margin-top: 1%;">

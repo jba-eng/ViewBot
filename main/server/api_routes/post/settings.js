@@ -31,7 +31,7 @@ async function updatePremiumRank(){
         }
     }
 
-    global.premium = isPremium;
+    global.premium = true;
     global.checkedStatus = true;
 }
 

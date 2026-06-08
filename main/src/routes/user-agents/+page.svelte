@@ -46,7 +46,7 @@
     <h1 class="setting_discloser">User Agents</h1>
     <div class="setting_div">
       <div class="same_line">
-        <label><input type="checkbox" on:change={(e:any)=>toggleAll(e.target?.checked)} />All</label>
+        <label><input type="checkbox" on:change={(e)=>toggleAll(e.target?.checked)} />All</label>
         {#each categories as c}
           <label style="margin-left: 12px;"><input type="checkbox" on:change={()=>toggleCategory(c.name)} />{c.name}</label>
         {/each}
@@ -74,7 +74,7 @@
       </div>
       <div class="same_line" style="margin-top: 8px;">
         <span class="setting_name">Languages (comma)</span>
-        <input class="setting_text" type="text" bind:value={(() => (Array.isArray(data.languages) ? data.languages.join(',') : data.languages))()} on:input={(e:any)=>{ const v = String(e.target?.value||''); data.languages = v.split(',').map(s=>s.trim()).filter(Boolean); }} />
+        <input class="setting_text" type="text" value={Array.isArray(data.languages) ? data.languages.join(',') : data.languages} on:input={(e)=>{ const v = String(e.target?.value||''); data.languages = v.split(',').map(s=>s.trim()).filter(Boolean); }} />
         <span class="setting_name" style="margin-left:12px;">Timezone offset</span>
         <input class="setting_text" type="number" bind:value={data.timezone_offset} />
       </div>

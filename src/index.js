@@ -1,9 +1,26 @@
+if (typeof globalThis.Blob === 'undefined') {
+    globalThis.Blob = class Blob {
+        constructor() {}
+    };
+}
+if (typeof globalThis.File === 'undefined') {
+    globalThis.File = class File extends globalThis.Blob {
+        constructor() {
+            super(...arguments);
+        }
+    };
+}
+
+global.require = require('esm')(module);
+
 const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, shell } = require("electron");
 
 //global.app_path = app.getPath("appData");
 global.app_path = path.join(__dirname);
+
+require("ansicolor").nice
 
 if (!fs.existsSync(path.join(__dirname, "../main/cache/raw_guests"))){
     fs.mkdirSync(path.join(__dirname, "../main/cache/raw_guests"), { recursive: true });

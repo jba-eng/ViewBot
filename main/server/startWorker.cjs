@@ -14,14 +14,90 @@ const { v4 } = require("uuid");
 const path = require("path");
 const fs = require("fs");
 
+async function removeUserDataDir(userDataDir, maxRetries = 5, delay = 500) {
+    if (!userDataDir || !fs.existsSync(userDataDir)) return;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            fs.rmSync(userDataDir, { recursive: true, force: true });
+            return;
+        } catch (err) {
+            if (err.code === 'EBUSY' && attempt < maxRetries - 1) {
+                await new Promise(r => setTimeout(r, delay * (attempt + 1)));
+                continue;
+            }
+            console.error(`Error deleting userDataDir ${userDataDir}:`, err);
+            return;
+        }
+    }
+}
+
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num
+}
+
+function convertProxyFormat(proxyString) {
+    if (!proxyString) return proxyString;
+    let protocol = "http";
+    let workingString = proxyString;
+    if (proxyString.includes("://")) {
+        let protocolParts = proxyString.split("://");
+        protocol = protocolParts[0];
+        workingString = protocolParts[1];
+    }
+    
+    if (protocol === "socks5h") protocol = "socks5";
+    if (protocol === "socks4h") protocol = "socks4";
+    
+    let parts = workingString.split(":");
+    if (parts.length === 4) {
+        return `${protocol}://${parts[2]}:${parts[3]}@${parts[0]}:${parts[1]}`;
+    }
+    return `${protocol}://${workingString}`;
+}
+
+function injectStickySession(proxyUrl) {
+    if (!proxyUrl || proxyUrl === "direct" || proxyUrl === "direct://") return proxyUrl;
+    let converted = convertProxyFormat(proxyUrl);
+    try {
+        let url = new URL(converted);
+        if (url.username) {
+            if (!url.username.includes("_session-")) {
+                const sessionId = Math.random().toString(36).substring(2, 12);
+                url.username = `${url.username}_session-${sessionId}`;
+            }
+        }
+        return url.toString();
+    } catch (err) {
+        if (converted.includes("@")) {
+            const parts = converted.split("@");
+            const userPassPart = parts[0];
+            if (!userPassPart.includes("_session-")) {
+                const sessionId = Math.random().toString(36).substring(2, 12);
+                return `${userPassPart}_session-${sessionId}@${parts[1]}`;
+            }
+        }
+        return proxyUrl;
+    }
 }
 
 let workingList = []
 
 global.watchInterval = setInterval(() => {
     workingList.forEach(async (workingHolder, workingIndex) => {
+        workingHolder.lastActivity = Date.now();
+
+        // Simulate natural mouse/scroll interactions periodically (every 20 to 45 seconds)
+        let now = Date.now();
+        if (!workingHolder.lastInteractionTime) {
+            workingHolder.lastInteractionTime = now;
+            workingHolder.nextInteractionDelay = Math.random() * 25000 + 20000;
+        }
+        if (now - workingHolder.lastInteractionTime > workingHolder.nextInteractionDelay) {
+            workingHolder.lastInteractionTime = now;
+            workingHolder.nextInteractionDelay = Math.random() * 25000 + 20000;
+            try { to(workingHolder.watcherContext.simulateHumanInteraction?.()); } catch (e) { /* interaction method not available */ }
+        }
+
         let [ad_err, ad] = await to(workingHolder.watcherContext.isAdPlaying())
         if (ad_err) return workingHolder.fail(`Error getting the current ad: ${ad_err}`)
 
@@ -135,8 +211,8 @@ global.watchInterval = setInterval(() => {
     io.emit("update_workers", workers)
 }, 500)
 
-async function makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resolve, reject){
-    return {
+async function makeOwnerHolder(job, worker, wtfp, browser, watcherContext, userDataDir, resolve, reject){
+    let holder = {
         lastWatchtime: 0,
         commented: false,
         disliked: false,
@@ -148,6 +224,9 @@ async function makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resol
         adDetected: false,
         adPlayTime: 0,
 
+        lastActivity: Date.now(),
+        _stuckTimer: null,
+
         browser: browser,
         watcherContext,
         account: job.account,
@@ -156,6 +235,10 @@ async function makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resol
         id: v4(),
         killed: false,
         kill: async function () {
+            if (this._stuckTimer) {
+                clearInterval(this._stuckTimer);
+                this._stuckTimer = null;
+            }
             this.killed = true
             workingList = workingList.filter(w => w.id !== this.id)
 
@@ -164,6 +247,7 @@ async function makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resol
                 browser = undefined
             }
 
+            await removeUserDataDir(userDataDir);
         },
         fail: async function (err) {
             await this.kill()
@@ -174,9 +258,19 @@ async function makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resol
             resolve()
         }
     }
+
+    let stuckTimeout = (settings.timeout + 60) * 1000;
+    holder._stuckTimer = setInterval(() => {
+        if (holder.killed) return;
+        if (Date.now() - holder.lastActivity > stuckTimeout) {
+            holder.fail(`Worker stuck - no activity for ${((Date.now() - holder.lastActivity) / 1000).toFixed(0)}s`);
+        }
+    }, 5000);
+
+    return holder;
 }
 
-async function startYoutubeWorker(job, worker, browser, wtfp, processErr, resolve, reject) {
+async function startYoutubeWorker(job, worker, browser, wtfp, userDataDir, processErr, resolve, reject) {
     let page
 
     let googleContext
@@ -205,7 +299,7 @@ async function startYoutubeWorker(job, worker, browser, wtfp, processErr, resolv
         if (clear_storage_err) return processErr(`Error clearing storage: ${clear_storage_err}`)
 
         let [init_loader_err] = await to(browser.initLoader())
-        if (init_loader_err) return processErr(`Error initializing the browser: ${clear_storage_err}`)
+        if (init_loader_err) return processErr(`Error initializing the browser: ${init_loader_err}`)
 
         
 
@@ -214,11 +308,23 @@ async function startYoutubeWorker(job, worker, browser, wtfp, processErr, resolv
         if (new_page_err) return processErr(`Error starting a new page: ${new_page_err}`)
     }
 
+    // Pre-flight GWS handshake to populate cookies on page load
+    let preflightUrl = "https://www.google.com";
+    if (job.referer && job.referer.startsWith("http")) {
+        preflightUrl = job.referer;
+    }
+    let [gws_err] = await to(page.page.goto(preflightUrl, { timeout: 20000, waitUntil: "domcontentloaded" }));
+    if (gws_err) console.log(`Worker ${worker.id} Warning: pre-flight warning: ${gws_err.message}`);
+    else {
+        // Wait a natural delay on the referring page to build history and align referrer
+        await page.page.waitForTimeout(Math.floor(Math.random() * 2000) + 1500);
+    }
+
     let [goto_video_err, watcherContext] = await to(page.gotoVideo(job.watch_type, job.id, {
-        //forceFind: true,
-        //title: job.keyword_chosen,
-        //filters: job.filters,
-        //referer: job.referer
+        forceFind: true,
+        title: job.keyword_chosen,
+        filters: job.filters,
+        referer: job.referer
     }))
 
     if (goto_video_err) return processErr(`Error going to the video: ${goto_video_err}`)
@@ -230,7 +336,7 @@ async function startYoutubeWorker(job, worker, browser, wtfp, processErr, resolv
 
     await watcherContext.setResolution("tiny");
 
-    let workerHolder = await makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resolve, reject);
+    let workerHolder = await makeOwnerHolder(job, worker, wtfp, browser, watcherContext, userDataDir, resolve, reject);
     workingList.push(workerHolder)
 
     if (browser) {
@@ -259,7 +365,7 @@ async function startYoutubeWorker(job, worker, browser, wtfp, processErr, resolv
     }
 }
 
-async function startRumbleWorker(job, worker, browser, wtfp, processErr, resolve, reject) {
+async function startRumbleWorker(job, worker, browser, wtfp, userDataDir, processErr, resolve, reject) {
     let [new_page_err, page] = await to(browser.newPage())
     if (new_page_err) return processErr(`Error starting a new page: ${new_page_err}`)
 
@@ -283,6 +389,18 @@ async function startRumbleWorker(job, worker, browser, wtfp, processErr, resolve
         if (clear_storage_err) return processErr(`Error clearing storage: ${clear_storage_err}`)
     }
 
+    // Pre-flight GWS handshake to populate cookies on page load
+    let preflightUrl = "https://www.google.com";
+    if (job.referer && job.referer.startsWith("http")) {
+        preflightUrl = job.referer;
+    }
+    let [gws_err] = await to(page.page.goto(preflightUrl, { timeout: 20000, waitUntil: "domcontentloaded" }));
+    if (gws_err) console.log(`Worker ${worker.id} Warning: pre-flight warning: ${gws_err.message}`);
+    else {
+        // Wait a natural delay on the referring page to build history and align referrer
+        await page.page.waitForTimeout(Math.floor(Math.random() * 2000) + 1500);
+    }
+
     let [goto_video_err, watcherContext] = await to(page.gotoVideo(job.watch_type, job.id, {
         forceFind: true,
         title: job.keyword_chosen,
@@ -296,7 +414,7 @@ async function startRumbleWorker(job, worker, browser, wtfp, processErr, resolve
         if (seek_err) return processErr(`Error seeking to the start of the video: ${seek_err}`)
     }
 
-    let workerHolder = await makeOwnerHolder(job, worker, wtfp, browser, watcherContext, resolve, reject);
+    let workerHolder = await makeOwnerHolder(job, worker, wtfp, browser, watcherContext, userDataDir, resolve, reject);
     workingList.push(workerHolder)
 
     if (browser) {
@@ -334,11 +452,33 @@ function startWorker(job, worker, userDataDir, wtfp) {
         let botType = job.isRumble ? rumble_selfbot_api : youtube_selfbot_api
 
         userDataDir = path.join(__dirname, `../../cache/raw_guests/${userDataDir}`);
+        if (!fs.existsSync(userDataDir)) {
+            fs.mkdirSync(userDataDir, { recursive: true });
+        }
+
+        let watchdogTimeout = (settings.timeout + 60) * 1000;
+        let watchdogTimer;
+        let watchdogArmed = true;
+
+        function resetWatchdog() {
+            if (!watchdogArmed) return;
+            if (watchdogTimer) clearTimeout(watchdogTimer);
+            watchdogTimer = setTimeout(async () => {
+                if (!watchdogArmed) return;
+                console.log(`Watchdog triggered for worker ${worker.id} - no activity detected, restarting`);
+                if (browser) {
+                    await to(browser.close());
+                    browser = undefined;
+                }
+                await removeUserDataDir(userDataDir);
+                reject(`Worker timed out after ${watchdogTimeout / 1000}s of inactivity`);
+            }, watchdogTimeout);
+        }
 
         let bot = new botType({
             headless: settings.headless,
-            //userDataDir: userDataDir,
-            proxy: job.proxy,
+            userDataDir: userDataDir,
+            proxy: injectStickySession(job.proxy),
             autoSkipAds: settings.auto_skip_ads,
             timeout: settings.timeout * 1000,
 
@@ -368,6 +508,11 @@ function startWorker(job, worker, userDataDir, wtfp) {
                 mode: settings.mouse_behavior,
                 speed: settings.mouse_speed,
                 randomness: settings.mouse_randomness
+            },
+
+            userAgents: {
+                categories: settings.user_agents_categories || [],
+                selected: settings.user_agents_selected || []
             }
         })
 
@@ -375,10 +520,14 @@ function startWorker(job, worker, userDataDir, wtfp) {
         let failed = false
 
         async function processErr(err) {
+            watchdogArmed = false;
+            if (watchdogTimer) clearTimeout(watchdogTimer);
             if (browser) {
                 await to(browser.close())
                 browser = undefined
             }
+
+            await removeUserDataDir(userDataDir);
 
             reject(err)
         }
@@ -401,6 +550,8 @@ function startWorker(job, worker, userDataDir, wtfp) {
             }
         })
 
+        resetWatchdog();
+
         let [launch_error, globalBrowser] = await to(bot.launch())
 
         if (launch_error) {
@@ -409,8 +560,11 @@ function startWorker(job, worker, userDataDir, wtfp) {
         }
 
         browser = globalBrowser
+        resetWatchdog();
 
         browser.on("bandwith", (id, type, len) => {
+            resetWatchdog();
+
             len = parseFloat((len * 1e-6).toFixed(2))
 
             var currentTime = getCurrentTime().getTime()
@@ -431,10 +585,13 @@ function startWorker(job, worker, userDataDir, wtfp) {
         })
 
         if (job.isRumble) {
-            await startRumbleWorker(job, worker, browser, wtfp, processErr, resolve, reject)
+            await startRumbleWorker(job, worker, browser, wtfp, userDataDir, processErr, resolve, reject)
         } else {
-            await startYoutubeWorker(job, worker, browser, wtfp, processErr, resolve, reject)
+            await startYoutubeWorker(job, worker, browser, wtfp, userDataDir, processErr, resolve, reject)
         }
+
+        watchdogArmed = false;
+        if (watchdogTimer) clearTimeout(watchdogTimer);
     })
 }
 

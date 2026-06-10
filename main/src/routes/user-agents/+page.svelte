@@ -9,18 +9,21 @@
   let filtered: string[] = all;
   let selectedAgents: Set<number> = new Set();
   let lastIndex = -1;
+  let allSelected = true;
   function toggleCategory(name: string) {
     if (selectedCategories.has(name)) selectedCategories.delete(name); else selectedCategories.add(name);
     const arr: string[] = [];
-    if (selectedCategories.size === 0) filtered = all; else {
+    if (selectedCategories.size === 0) { filtered = all; allSelected = true; } else {
       for (const c of categories) if (selectedCategories.has(c.name)) arr.push(...c.list);
       filtered = arr;
+      allSelected = false;
     }
     selectedAgents.clear();
     lastIndex = -1;
   }
   function toggleAll(on: boolean) {
     selectedCategories.clear();
+    allSelected = on;
     if (on) filtered = all; else filtered = [];
     selectedAgents.clear();
     lastIndex = -1;
@@ -46,7 +49,7 @@
     <h1 class="setting_discloser">User Agents</h1>
     <div class="setting_div">
       <div class="same_line">
-        <label><input type="checkbox" on:change={(e)=>toggleAll(e.target?.checked)} />All</label>
+        <label><input type="checkbox" bind:checked={allSelected} on:change={() => toggleAll(allSelected)} />All</label>
         {#each categories as c}
           <label style="margin-left: 12px;"><input type="checkbox" on:change={()=>toggleCategory(c.name)} />{c.name}</label>
         {/each}
@@ -123,9 +126,23 @@
   .settings_container { background-color:#272c30; padding-bottom:2%; margin-bottom:5%; }
   .setting_discloser { text-align:center; color:#eee; font-size:1.3em; }
   .setting_div { margin:3%; box-shadow:0 0 2px 3px #363635; }
-  .same_line { display:flex; align-items:center; }
+  .same_line { display:flex; align-items:center; padding: 8px 0; }
   .setting_button { aspect-ratio:1.7/1; min-height:0.9em; min-width:0.9em; margin-left:5%; background-color:#272c30; }
   .setting_info { font-size:0.8em; color:#b2bac2; margin-bottom:2%; margin-top:1%; }
   .container_blue { box-shadow:0 0 12px 4px rgba(2,71,197,.95); }
   .container_green { box-shadow:0 0 12px 4px rgba(8,197,24,.86); padding:12px; }
+  .setting_name {
+    color: rgb(221, 216, 211);
+    font-size: 0.9em;
+    margin-left: 12px;
+    margin-right: 6px;
+  }
+  .setting_text {
+    background-color: rgb(199, 203, 207);
+    color: #111;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 4px 6px;
+    max-width: 120px;
+  }
 </style>

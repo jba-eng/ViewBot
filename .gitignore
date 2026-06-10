@@ -16,3 +16,4 @@ out/
 app
 sessions
 *browserEngine/*
+data

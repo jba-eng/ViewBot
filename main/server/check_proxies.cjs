@@ -9,6 +9,7 @@ let createProxyTester;
 const ytdl = require("@ybd-project/ytdl-core");
 
 const ProxyAgent = require("proxy-agent-v2");
+const axios = require("axios");
 
 const { Writable } = require("stream");
 let nullPipe = new Writable({ write: (a, b, cb) => cb() })
@@ -31,6 +32,14 @@ function checkProxies(proxies) {
     return new Promise(async (resolve, reject) => {
         proxies = proxies.filter((v) => v.url !== "direct://");
         proxies = [...new Set(proxies)];
+
+        let localIP = "";
+        try {
+            const res = await axios.get("https://api64.ipify.org", { timeout: 10000 });
+            localIP = res.data.trim();
+        } catch (e) {
+            console.error("Failed to fetch local IP for pre-flight privacy checks:", e.message);
+        }
 
         let resolved = false
         let finished = 0
@@ -90,13 +99,108 @@ function checkProxies(proxies) {
                     }
 
                     currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
+                    workingOn[currentWorkingOn].stage = "performing Mullvad exit/ASN audit (2b)"
+
+                    const agent = new ProxyAgent(convertProxyFormat(proxy));
+                    let mullvadData;
+                    try {
+                        const mullvadRes = await axios.get("https://am.i.mullvad.net/json", {
+                            httpAgent: agent,
+                            httpsAgent: agent,
+                            timeout: settings.timeout * 1000
+                        });
+                        mullvadData = mullvadRes.data;
+                    } catch (err) {
+                        proxyStats.bad.push({ url: proxy, err: "Mullvad exit/ASN check failed: " + err.message })
+                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                        io.emit("newProxiesStats", proxyStats)
+                        return
+                    }
+
+                    if (mullvadData) {
+                        if (mullvadData.mullvad_exit_ip) {
+                            proxyStats.bad.push({ url: proxy, err: "Proxy is a Mullvad exit node" })
+                            proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                            io.emit("newProxiesStats", proxyStats)
+                            return
+                        }
+                        if (mullvadData.blacklisted && mullvadData.blacklisted.blacklisted) {
+                            proxyStats.bad.push({ url: proxy, err: "Proxy is blacklisted on Mullvad" })
+                            proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                            io.emit("newProxiesStats", proxyStats)
+                            return
+                        }
+                        const org = mullvadData.organization ? mullvadData.organization.toLowerCase() : "";
+                        const badOrgs = ["amazon", "digitalocean", "linode", "google", "microsoft", "ovh", "hetzner", "leaseweb", "choopa", "m247", "host"];
+                        if (badOrgs.some(bad => org.includes(bad))) {
+                            proxyStats.bad.push({ url: proxy, err: "Proxy datacenter/hosting network: " + mullvadData.organization })
+                            proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                            io.emit("newProxiesStats", proxyStats)
+                            return
+                        }
+                    }
+
+                    currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
                     workingOn[currentWorkingOn].stage = "checking proxy privacy (2)"
 
-                    let privacy = await tester.testPrivacy().catch(() => onError("timeout checking proxy privacy"))
+                    let privacy = await tester.testPrivacy(localIP).catch(() => {
+                        if (mullvadData && mullvadData.ip) {
+                            return {
+                                privacy: (localIP && mullvadData.ip === localIP) ? "transparent" : "elite",
+                                ip: mullvadData.ip,
+                                location: mullvadData
+                            };
+                        }
+                        throw new Error("timeout checking proxy privacy");
+                    });
+
                     if (privacy.privacy !== "elite") {
                         proxyStats.bad.push({ url: proxy, err: "Proxy is leaking IP address" })
                         proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
 
+                        io.emit("newProxiesStats", proxyStats)
+                        return
+                    }
+
+                    currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
+                    workingOn[currentWorkingOn].stage = "performing Google GWS pre-flight audit (2c)"
+
+                    let googleRes;
+                    try {
+                        googleRes = await axios.get("https://www.google.com", {
+                            httpAgent: agent,
+                            httpsAgent: agent,
+                            timeout: settings.timeout * 1000,
+                            headers: {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                            }
+                        });
+                    } catch (err) {
+                        proxyStats.bad.push({ url: proxy, err: "Google GWS pre-flight validation timed out or failed: " + err.message })
+                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                        io.emit("newProxiesStats", proxyStats)
+                        return
+                    }
+
+                    if (googleRes.status !== 200) {
+                        proxyStats.bad.push({ url: proxy, err: "Google GWS validation status: " + googleRes.status })
+                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                        io.emit("newProxiesStats", proxyStats)
+                        return
+                    }
+
+                    const resolvedUrl = googleRes.request && googleRes.request.res ? googleRes.request.res.responseUrl || "" : "";
+                    if (resolvedUrl.includes("/sorry/index") || resolvedUrl.includes("sorry.google.com")) {
+                        proxyStats.bad.push({ url: proxy, err: "Proxy is CAPTCHA-blocked by Google (sorry page redirect)" })
+                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
+                        io.emit("newProxiesStats", proxyStats)
+                        return
+                    }
+
+                    const serverHeader = googleRes.headers["server"] || "";
+                    if (!serverHeader.toLowerCase().includes("gws")) {
+                        proxyStats.bad.push({ url: proxy, err: "Google GWS signature validation failed: " + serverHeader })
+                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
                         io.emit("newProxiesStats", proxyStats)
                         return
                     }

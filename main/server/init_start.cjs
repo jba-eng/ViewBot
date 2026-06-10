@@ -11,6 +11,7 @@ const { NodeVM } = require("vm2");
 const { existsSync, lstatSync, mkdir, mkdirSync, readFileSync, readdirSync, writeFileSync } = require("fs");
 
 const defaultServerInfo = require("./vars.cjs").defaultServerInfo;
+const { regenerateFingerprints } = require("./fingerprint_generator.cjs");
 
 
 
@@ -306,6 +307,8 @@ async function getGlobals(){
     
         await dbRunWithValues('INSERT INTO options (data, id) VALUES (?, 1)', JSON.stringify(global.settings));
     };
+
+    await regenerateFingerprints();
 }
 
 global.getGlobals = getGlobals;

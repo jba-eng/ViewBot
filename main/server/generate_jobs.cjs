@@ -117,12 +117,22 @@ async function generateJobs(work_video, work_proxies) {
     let videoInfo;
 
     if(video_id){
-        videoInfo = await selfbot_api.getVideoInfo(video_id)
+        try {
+            videoInfo = await selfbot_api.getVideoInfo(video_id)
+        } catch (err) {
+            console.error(`[generateJobs] Failed to get video info for ${work_video.id}:`, err.message);
+            return;
+        }
     } else {
         isRumble = true;
 
-        video_id = await rumble_core.getVideoID(work_video.id);
-        videoInfo = await rumble_selfbot_api.getVideoInfo(video_id) 
+        try {
+            video_id = await rumble_core.getVideoID(work_video.id);
+            videoInfo = await rumble_selfbot_api.getVideoInfo(video_id)
+        } catch (err) {
+            console.error(`[generateJobs] Failed to get Rumble video info for ${work_video.id}:`, err.message);
+            return;
+        }
     }
 
     for (let i = 0; i < work_video.guest_views; i++) {

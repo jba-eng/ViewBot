@@ -39,7 +39,7 @@ async function startFullServer(){
 
 global.startFullServer = startFullServer;
 
-let proxyFormats = ["socks5", "socks4", "http", "https"]
+let proxyFormats = ["socks5", "socks5h", "socks4", "socks4h", "http", "https"]
 
 route.get("/:method", (req, res) => {
     let api = req.path.split("/").pop()
@@ -73,6 +73,60 @@ let urlTesterInstance;
     const createProxyTester = (await import("fast-proxy-tester")).createProxyTester;
     urlTesterInstance = new createProxyTester("", 0);
 })();
+
+global.proxyUsageHistory = global.proxyUsageHistory || {};
+
+function getProxySessionKey(proxyUrl) {
+    if (!proxyUrl) return "";
+    let match = proxyUrl.match(/_session-([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    return proxyUrl;
+}
+
+function selectProxyForJob(videoId) {
+    let availableProxies = proxyStats.good.map(v => v.url);
+    if (availableProxies.length === 0) {
+        return "direct://";
+    }
+
+    let now = Date.now();
+    let fifteenMinutesMs = 15 * 60 * 1000;
+
+    // Filter proxies that haven't been used for this video in the last 15 minutes
+    let validProxies = availableProxies.filter(proxy => {
+        let sessionKey = getProxySessionKey(proxy);
+        let historyKey = `${sessionKey}::${videoId}`;
+        let lastUsed = global.proxyUsageHistory[historyKey];
+        if (lastUsed && (now - lastUsed < fifteenMinutesMs)) {
+            return false;
+        }
+        return true;
+    });
+
+    if (validProxies.length === 0) {
+        // Fallback: pick the one used longest ago
+        let oldestProxy = availableProxies[0];
+        let oldestTime = Infinity;
+        for (let proxy of availableProxies) {
+            let sessionKey = getProxySessionKey(proxy);
+            let historyKey = `${sessionKey}::${videoId}`;
+            let lastUsed = global.proxyUsageHistory[historyKey] || 0;
+            if (lastUsed < oldestTime) {
+                oldestTime = lastUsed;
+                oldestProxy = proxy;
+            }
+        }
+        validProxies = [oldestProxy];
+    }
+
+    let selectedProxy = validProxies[Math.floor(Math.random() * validProxies.length)];
+
+    let sessionKey = getProxySessionKey(selectedProxy);
+    let historyKey = `${sessionKey}::${videoId}`;
+    global.proxyUsageHistory[historyKey] = now;
+
+    return selectedProxy;
+}
 
 const { checkProxies } = require("./server/check_proxies.cjs");
 const { generateJobs } = require("./server/generate_jobs.cjs");
@@ -175,6 +229,31 @@ async function startWorking() {
                             if (video.id.trim().length >= 7)
                                 await generateJobs(video, work_proxies)
                         }
+
+                        // Group and Interleave jobs (round-robin) to loop through videos
+                        if (jobs.length > 0) {
+                            let jobsByVideo = {};
+                            for (let job of jobs) {
+                                if (!jobsByVideo[job.id]) {
+                                    jobsByVideo[job.id] = [];
+                                }
+                                jobsByVideo[job.id].push(job);
+                            }
+
+                            let interleavedJobs = [];
+                            let videoIds = Object.keys(jobsByVideo);
+                            let maxJobs = Math.max(...videoIds.map(id => jobsByVideo[id].length));
+
+                            for (let i = 0; i < maxJobs; i++) {
+                                for (let id of videoIds) {
+                                    if (jobsByVideo[id].length > i) {
+                                        interleavedJobs.push(jobsByVideo[id][i]);
+                                    }
+                                }
+                            }
+
+                            jobs = interleavedJobs;
+                        }
                     }
 
                     if (jobs.length > 0) {
@@ -226,6 +305,9 @@ async function startWorking() {
                     if (currentJob) {
                         currentOpen += 1
                         currentWorker += 1
+
+                        // Dynamically select proxy at runtime based on 15-minute history check
+                        currentJob.proxy = selectProxyForJob(currentJob.id);
 
                         let tempWorker = currentWorker
                         let userDataDir = tempWorker

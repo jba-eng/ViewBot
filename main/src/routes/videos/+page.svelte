@@ -6,7 +6,7 @@
 	import { socket } from '../../background.js';
 
 	let videos: any[] = [];
-	let watch_time_options = ['search', 'direct', 'subscribers', 'suggestions'];
+	let watch_time_options = ['channel', 'search', 'direct', 'subscribers', 'suggestions'];
 
 	$: publishVideos(videos);
 	let justChanged = Date.now();
@@ -112,11 +112,11 @@
 		on:click={() => {
 			videos.unshift({
 				id: ``,
-				watch_time: [25, 75],
+				watch_time: [47, 87],
 				livestream_watchtime: 300,
 				watch_entire_livestream: true,
 				guest_views: 10,
-				available_watch_types: ['search', 'direct'],
+				available_watch_types: ['channel', 'search', 'direct'],
 				keywords: [],
 				referrals: ["https://www.discord.com", "https://www.youtube.com", "https://www.facebook.com", "https://www.x.com"],
 				filters: {

@@ -187,7 +187,7 @@
 		actualNavbar = !actualNavbar;
 	}
 
-	let statusArray = ['Start workers', 'Checking proxies', 'Stop workers'];
+	let statusArray = ['Start Workers', 'Checking Proxies', 'Stop Workers'];
 	let workersStatus = 0;
 	$: workersTitle = statusArray[workersStatus];
 
@@ -300,116 +300,43 @@
 
 <div id="main_div">
 	{#if showNavbar}
-		{#if actualNavbar}
-			<div id="sidebar" in:fade>
-				<div id="small_stats">
-					<div id="title">
-						<h4>YOUTUBE WATCH BOT</h4>
-					</div>
-					<!--<div id="actual_stats">
-						<h2 id="status_title">Status</h2>
-
-						<div class="stats_show">
-							<div class="stats_green" style="background-color: {connected_color}" />
-							<h2 class="status_subtitle">
-								{(connected_color == 'green' && 'Online') || 'Offline'}
-							</h2>
-						</div>
-
-						<div class="stats_show">
-							<div class="stats_green" style="background-color: {cpu_color}" />
-							<h2 class="status_subtitle">CPU load: {cpu_load}%</h2>
-						</div>
-
-						<div class="stats_show">
-							<div class="stats_green" style="background-color: {memory_color}" />
-							<h2 class="status_subtitle">Memory usage: {memory_usage}%</h2>
-						</div>
-
-						<div class="stats_show" style="margin-bottom: 5%;">
-							<div class="stats_green" style="background-color: {temp_color}" />
-							<h2 class="status_subtitle">Temp: {temp}C</h2>
-						</div>
-					</div>-->
-				</div>
-				<div id="sidebar_buttons">
-					<a class="sidebar_button" href="/" class:green_sidebar={pLocation == ''}>
-						<img src="/svgs/dashboard.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Dashboard</span>
-					</a>
-
-					<a
-						class="sidebar_button"
-						href="/extensions"
-						class:green_sidebar={pLocation == 'extensions'}
-					>
-						<img src="/svgs/extensions.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Extensions</span>
-					</a>
-
-					<a class="sidebar_button" href="/proxies" class:green_sidebar={pLocation == 'proxies'}>
-						<img src="/svgs/proxies.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Proxies</span>
-					</a>
-
-					<a class="sidebar_button" href="/videos" class:green_sidebar={pLocation == 'videos'}>
-						<img src="/svgs/videos.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Videos</span>
-					</a>
-
-					<!--<a class="sidebar_button" href="/console" class:green_sidebar={pLocation == 'console'}>
-						<img src="/svgs/console.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Console</span>
-					</a>-->
-
-					<a class="sidebar_button" href="/settings" class:green_sidebar={pLocation == 'settings'}>
-						<img src="/svgs/settings.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Settings</span>
-					</a>
-
-					<a class="sidebar_button" href="/user-agents" class:green_sidebar={pLocation == 'user-agents'}>
-						<img src="/svgs/settings.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">User Agents</span>
-					</a>
-
-					<a class="sidebar_button" href="/docs" class:green_sidebar={pLocation == 'docs'}>
-						<img src="/svgs/extensions.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Docs</span>
-					</a>
-
-					<a
-						class="sidebar_button red_sidebar"
-						href="/change_password"
-						class:green_sidebar={pLocation == 'change_password'}
-					>
-						<img src="/svgs/password.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Change password</span>
-					</a>
-
-					<a class="sidebar_button blue_sidebar" href="https://bloxxy.net/projects/1">
-						<img src="/svgs/donate.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">Bloxxy's Page</span>
-					</a>
-
-					<a class="sidebar_button blue_sidebar" href="https://github.com/veracitylife/ViewBot">
-						<img src="/svgs/github.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">GitHub Fork</span>
-					</a>
-
-					<a class="sidebar_button blue_sidebar" href="https://discord.gg/GCa9zS7j">
-						<img src="/svgs/discord.svg" alt="button svg" class="sidebar_image" />
-						<span class="sidebar_btn_title">SWT Discord Server</span>
-					</a>
-				</div>
-			</div>
-		{/if}
-
-		<div id="navbar-{actualNavbar}" class="navbar">
+		<div class="navbar">
 			<div id="navbar-buttons">
-				<button id="close_sidebar" on:click={hideSidebar}> &lt</button>
-				<button id="start_workers" class="worker_{workersStatus}" on:click={start_workers}>
-					{workersTitle}
-				</button>
+				<div class="branding_container">
+					<img src="/images/logo.png" alt="logo" class="logo_image" />
+					<span class="brand_name">
+						<span class="brand_white">Youtube Watch</span> <span class="brand_red">Bot</span>
+					</span>
+				</div>
+
+				<div class="nav_center_group">
+					<a class="nav_button" href="/" class:active={pLocation == ''}>
+						<img src="/svgs/dashboard.svg" alt="dashboard svg" class="nav_image" />
+						<span>Dashboard</span>
+					</a>
+					<a class="nav_button" href="/proxies" class:active={pLocation == 'proxies'}>
+						<img src="/svgs/proxies.svg" alt="proxies svg" class="nav_image" />
+						<span>Proxies</span>
+					</a>
+					<a class="nav_button" href="/videos" class:active={pLocation == 'videos'}>
+						<img src="/svgs/videos.svg" alt="videos svg" class="nav_image" />
+						<span>Videos</span>
+					</a>
+
+					<button id="start_workers" class="worker_{workersStatus}" on:click={start_workers}>
+						{workersTitle}
+					</button>
+
+					<a class="nav_button" href="/settings" class:active={pLocation == 'settings'}>
+						<img src="/svgs/settings.svg" alt="settings svg" class="nav_image" />
+						<span>Settings</span>
+					</a>
+					<a class="nav_button" href="/user-agents" class:active={pLocation == 'user-agents'}>
+						<img src="/svgs/settings.svg" alt="user agents svg" class="nav_image" />
+						<span>User Agents</span>
+					</a>
+				</div>
+
 				<p id="version_container" class={latestVRS == VRS ? 'latest_version' : 'old_version'}>
 					version {VRS}
 				</p>
@@ -428,284 +355,208 @@
 
 <style lang="scss">
 	.latest_version {
-		color: rgb(45, 223, 22);
+		color: #ffffff;
 	}
 
 	.old_version {
-		color: rgb(216, 20, 6);
+		color: #e50914;
 	}
 
 	#start_workers {
-		color: rgb(240, 234, 227);
-
-		height: 100%;
-		max-height: 100%;
-		min-height: 100%;
-
+		border-radius: 30px;
 		border: 0;
-		font-weight: 900;
-		font-size: 1.75em;
+		font-weight: 700;
+		font-size: 14px;
+		padding: 8px 24px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		box-sizing: border-box;
+		margin: 0;
+		flex-shrink: 0;
 	}
 
 	.worker_0 {
-		background-color: green;
-		box-shadow: 0 0 6px 2px rgba(124, 212, 9, 0.856);
+		background-color: #e50914;
+		color: #ffffff;
+		box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+	}
+	.worker_0:hover {
+		background-color: #c20710;
+		box-shadow: 0 6px 16px rgba(229, 9, 20, 0.45);
 	}
 
 	.worker_1 {
-		background-color: rgb(223, 105, 9);
-		box-shadow: 0 0 6px 2px rgba(167, 94, 10, 0.767);
+		background-color: #e50914;
+		color: #ffffff;
+		box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+	}
+	.worker_1:hover {
+		background-color: #c20710;
+		box-shadow: 0 6px 16px rgba(229, 9, 20, 0.45);
 	}
 
 	.worker_2 {
-		background-color: rgb(211, 9, 9);
-		box-shadow: 0 0 6px 2px rgba(245, 42, 42, 0.815);
+		background-color: #e50914;
+		color: #ffffff;
+		box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+	}
+	.worker_2:hover {
+		background-color: #c20710;
+		box-shadow: 0 6px 16px rgba(229, 9, 20, 0.45);
 	}
 
 	#version_container {
 		display: flex;
-		align-self: center;
 		align-items: center;
-
-		text-align: center;
-		background-color: transparent;
-		border: 0 transparent;
-
-		margin-right: 3%;
-
-		font-weight: bold;
-		font-size: 1.75em;
+		font-weight: 600;
+		font-size: 13px;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.05);
+		padding: 4px 12px;
+		border-radius: 15px;
+		margin: 0;
+		position: absolute;
+		right: 24px;
 	}
 
-	@media only screen and (orientation: portrait) {
+	@media only screen and (max-width: 768px) {
 		#start_workers {
-			font-size: 1em;
+			font-size: 12px;
+			padding: 6px 16px;
 		}
 
 		#version_container {
-			font-size: 1.25em;
-			margin-right: 1%;
+			font-size: 11px;
+			padding: 3px 8px;
 		}
 	}
 
 	.navbar {
-		height: 6vh;
-		min-height: 6vh;
-		max-height: 6vh;
-
-		background-color: #272c30;
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		min-height: 100vh;
+		max-height: 100vh;
+		width: 100vw;
+		background-color: transparent;
 	}
 
 	#navbar-buttons {
-		height: 100%;
-		max-height: 100%;
-		min-height: 100%;
-
+		height: 60px;
+		min-height: 60px;
+		max-height: 60px;
+		background-color: #1e2225;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 		display: flex;
-		justify-content: space-between;
-	}
-
-	.sidebar_button {
-		display: flex;
-
-		margin-top: 1%;
-
+		align-items: center;
+		justify-content: center;
+		padding: 0 24px;
+		box-sizing: border-box;
 		width: 100%;
-		max-width: 100%;
-		min-width: 100%;
-
-		height: 5%;
-		max-height: 5%;
-		min-height: 5%;
+		position: relative;
 	}
 
-	.green_sidebar {
-		background-color: rgb(38, 122, 30);
+	.nav_center_group {
+		display: flex;
+		align-items: center;
+		gap: 16px;
 	}
 
-	.blue_sidebar {
-		background-color: #185ca0;
+	.branding_container {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		position: absolute;
+		left: 24px;
 	}
 
-	.red_sidebar {
-		background-color: #a01010;
+	.logo_image {
+		width: 30px;
+		height: 30px;
+		border-radius: 6px;
+		object-fit: contain;
 	}
 
-	.sidebar_button:hover {
-		background-image: linear-gradient(rgb(0 0 0/40%) 0 0);
+	.brand_name {
+		font-size: 15px;
+		font-weight: 700;
+		white-space: nowrap;
+		letter-spacing: 0.2px;
 	}
 
-	.sidebar_btn_title {
-		margin-left: 20%;
-		font-weight: bold;
-		text-align: center;
+	.brand_white {
+		color: #ffffff;
 	}
 
-	.sidebar_image {
-		aspect-ratio: 1;
-		max-height: 5vh;
+	.brand_red {
+		color: #e50914;
 	}
 
-	#close_sidebar {
-		margin-left: 1.5%;
-		aspect-ratio: 1;
-
-		height: 100%;
-		max-height: 100%;
-		min-height: 100%;
-
+	.nav_button {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 16px;
+		border-radius: 8px;
+		color: #a0aec0;
+		text-decoration: none;
+		font-size: 14px;
+		font-weight: 500;
+		transition: all 0.2s ease;
+		border: 1px solid transparent;
 		background-color: transparent;
-		border: 0 transparent;
-
-		font-weight: bold;
-		font-size: 150%;
+		cursor: pointer;
 	}
 
-	#title {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-
-		font-size: 1em;
-		color: rgb(240, 233, 233);
-		background-color: rgb(8, 156, 20);
-		font-weight: bold;
-
-		max-height: 6vh;
-		min-height: 6vh;
-		height: 6vh;
-
-		width: 100%;
-		min-width: 100%;
+	.nav_button:hover {
+		background-color: rgba(255, 255, 255, 0.04);
+		color: #ffffff;
 	}
 
-	#actual_stats {
-		border: 0;
-		box-shadow: 0 0 12px 4px rgba(0, 0, 0, 0.4);
-		width: 100%;
-		min-width: 100%;
+	.nav_button.active {
+		background: linear-gradient(135deg, rgba(229, 9, 20, 0.15) 0%, rgba(229, 9, 20, 0.03) 100%);
+		border: 1px solid rgba(229, 9, 20, 0.25);
+		color: #e50914;
+		font-weight: 600;
 	}
 
-	#status_title {
-		text-align: center;
-		font-size: 1.1em;
-		color: rgb(240, 233, 233);
-		font-weight: bold;
+	.nav_button.active .nav_image {
+		filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(229, 9, 20, 0.6)) !important;
+		opacity: 1;
 	}
 
-	.stats_green {
-		margin-left: 3%;
-		margin-right: 5%;
-
-		min-width: 1em;
-		width: 1em;
-		max-width: 1em;
-
-		min-height: 1em;
-		height: 1em;
-		max-height: 1em;
-
-		background-color: rgb(8, 156, 20);
-		border-radius: 25px;
-		border: 0;
+	.nav_image {
+		width: 16px;
+		height: 16px;
+		object-fit: contain;
+		filter: brightness(0) invert(1);
+		opacity: 0.7;
+		transition: opacity 0.2s ease;
 	}
 
-	.stats_show {
-		display: flex;
-		justify-content: left;
-		justify-items: center;
-	}
-
-	.status_subtitle {
-		margin-left: 1%;
-		text-align: left;
-		font-size: 100%;
-		color: rgb(212, 201, 201);
-	}
-
-	#small_stats {
-		display: flex;
-
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-
-		min-height: 13%;
-		width: 100%;
-		min-width: 100%;
-		margin-bottom: 5%;
-	}
-	#sidebar {
-		margin-left: 2vw;
-		background-color: #272c30;
-
-		width: 180px;
-		max-width: 16%;
-		min-width: 180px;
-
-		max-height: 100vh;
-		height: 100vh;
-		min-height: 100vh;
-	}
-
-	#navbar-false {
-		max-width: 94vw;
-		width: 94vw;
-		min-width: 94vw;
-		margin-left: 3vw;
-	}
-
-	#navbar-true {
-		max-width: calc(100vw - 4vw - 200px);
-		width: calc(100vw - 4vw - 200px);
-		min-width: calc(100vw - 4vw - 200px);
+	.nav_button:hover .nav_image {
+		opacity: 1;
 	}
 
 	#main_div {
+		width: 100vw;
+		height: 100vh;
+		overflow: hidden;
 		display: flex;
 	}
 
 	.slot-color {
-		background-color: #353c42;
-
-		height: 94vh;
-		max-height: 94vh;
-		min-height: 94vh;
-
+		background-color: #272c30;
+		flex-grow: 1;
 		width: 100%;
-		max-width: 100%;
-		min-width: 100%;
-	}
-
-	@media only screen and (orientation: portrait) {
-		#navbar-true {
-			min-width: 100%;
-			max-width: 100%;
-			width: 100%;
-			margin-left: 0;
-		}
-
-		#navbar-false {
-			min-width: 100%;
-			max-width: 100%;
-			width: 100%;
-			margin-left: 0;
-		}
-
-		#sidebar {
-			margin-left: 0;
-		}
-	}
-
-	#slot {
 		overflow-y: auto;
 		overflow-x: hidden;
 	}
 
-	#slot,
-	#navbar,
-	#sidebar {
+	#slot {
 		flex: 1;
 	}
 </style>

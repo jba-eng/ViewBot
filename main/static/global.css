@@ -25,3 +25,52 @@ button:disabled {
 h1 {
     font-size: 2em;
 }
+
+.info-icon {
+    position: relative;
+    cursor: pointer;
+    color: #ffffff;
+    margin-left: 6px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    font-weight: bold;
+}
+
+.info-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 130%;
+    left: -20px;
+    transform: scale(0.9);
+    transform-origin: bottom left;
+    background: #1a1d20;
+    color: #e2e8f0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.4;
+    width: 250px;
+    white-space: normal;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.15s ease-in-out;
+    z-index: 1000;
+    pointer-events: none;
+    text-align: left;
+}
+
+.info-icon:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}

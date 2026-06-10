@@ -693,15 +693,28 @@ function countValidFingerprints() {
   try {
     files = fs.readdirSync(FINGERPRINT_DIR).filter(f => f.endsWith(".fp"));
   } catch (e) { return 0; }
-  let valid = 0;
-  for (const file of files) {
+  
+  if (files.length < 1000) return files.length;
+
+  // Validate a random sample of 20 files. If any are corrupt, force regeneration.
+  const sampleSize = Math.min(files.length, 20);
+  let corruptCount = 0;
+  for (let i = 0; i < sampleSize; i++) {
+    const randomFile = files[Math.floor(Math.random() * files.length)];
     try {
-      const fp = fs.readFileSync(path.join(FINGERPRINT_DIR, file), "utf8");
+      const fp = fs.readFileSync(path.join(FINGERPRINT_DIR, randomFile), "utf8");
       JSON.parse(fp);
-      valid++;
-    } catch (e) { /* not valid JSON */ }
+    } catch (e) {
+      corruptCount++;
+    }
   }
-  return valid;
+
+  if (corruptCount > 0) {
+    console.log(`[FingerprintGenerator] Detected corrupt fingerprints in sample (${corruptCount}/${sampleSize}). Forcing regeneration.`);
+    return 0;
+  }
+
+  return files.length;
 }
 
 function regenerateFingerprints() {

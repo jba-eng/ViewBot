@@ -452,7 +452,7 @@ function startWorker(job, worker, userDataDir, wtfp) {
 
         let botType = job.isRumble ? rumble_selfbot_api : youtube_selfbot_api
 
-        userDataDir = path.join(__dirname, `../../cache/raw_guests/${userDataDir}`);
+        userDataDir = path.join(__dirname, `../../cache/raw_guests/worker-${worker.id}`);
         await removeUserDataDir(userDataDir);
         fs.mkdirSync(userDataDir, { recursive: true });
 

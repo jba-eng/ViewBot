@@ -100,11 +100,7 @@ function checkProxies(proxies) {
 
                     let urlStatus = tester.testProxyURL(formattedProxy);
                     if (!urlStatus.isValid) {
-                        proxyStats.bad.push({ url: proxy, err: "Proxy is malformed" })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Proxy is malformed");
                     }
 
                     currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
@@ -120,32 +116,20 @@ function checkProxies(proxies) {
                         });
                         mullvadData = mullvadRes.data;
                     } catch (err) {
-                        proxyStats.bad.push({ url: proxy, err: "Mullvad exit/ASN check failed: " + err.message })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Mullvad exit/ASN check failed: " + err.message);
                     }
 
                     if (mullvadData) {
                         if (mullvadData.mullvad_exit_ip) {
-                            proxyStats.bad.push({ url: proxy, err: "Proxy is a Mullvad exit node" })
-                            proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                            io.emit("newProxiesStats", proxyStats)
-                            return
+                            throw new Error("Proxy is a Mullvad exit node");
                         }
                         if (mullvadData.blacklisted && mullvadData.blacklisted.blacklisted) {
-                            proxyStats.bad.push({ url: proxy, err: "Proxy is blacklisted on Mullvad" })
-                            proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                            io.emit("newProxiesStats", proxyStats)
-                            return
+                            throw new Error("Proxy is blacklisted on Mullvad");
                         }
                         const org = mullvadData.organization ? mullvadData.organization.toLowerCase() : "";
                         const badOrgs = ["amazon", "digitalocean", "linode", "google", "microsoft", "ovh", "hetzner", "leaseweb", "choopa", "m247", "host"];
                         if (badOrgs.some(bad => org.includes(bad))) {
-                            proxyStats.bad.push({ url: proxy, err: "Proxy datacenter/hosting network: " + mullvadData.organization })
-                            proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                            io.emit("newProxiesStats", proxyStats)
-                            return
+                            throw new Error("Proxy datacenter/hosting network: " + mullvadData.organization);
                         }
                     }
 
@@ -164,11 +148,7 @@ function checkProxies(proxies) {
                     });
 
                     if (privacy.privacy !== "elite") {
-                        proxyStats.bad.push({ url: proxy, err: "Proxy is leaking IP address" })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Proxy is leaking IP address");
                     }
 
                     currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
@@ -185,33 +165,21 @@ function checkProxies(proxies) {
                             }
                         });
                     } catch (err) {
-                        proxyStats.bad.push({ url: proxy, err: "Google GWS pre-flight validation timed out or failed: " + err.message })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Google GWS pre-flight validation timed out or failed: " + err.message);
                     }
 
                     if (googleRes.status !== 200) {
-                        proxyStats.bad.push({ url: proxy, err: "Google GWS validation status: " + googleRes.status })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Google GWS validation status: " + googleRes.status);
                     }
 
                     const resolvedUrl = googleRes.request && googleRes.request.res ? googleRes.request.res.responseUrl || "" : "";
                     if (resolvedUrl.includes("/sorry/index") || resolvedUrl.includes("sorry.google.com")) {
-                        proxyStats.bad.push({ url: proxy, err: "Proxy is CAPTCHA-blocked by Google (sorry page redirect)" })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Proxy is CAPTCHA-blocked by Google (sorry page redirect)");
                     }
 
                     const serverHeader = googleRes.headers["server"] || "";
                     if (!serverHeader.toLowerCase().includes("gws")) {
-                        proxyStats.bad.push({ url: proxy, err: "Google GWS signature validation failed: " + serverHeader })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Google GWS signature validation failed: " + serverHeader);
                     }
 
                     currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
@@ -219,11 +187,7 @@ function checkProxies(proxies) {
 
                     let test1Result = await tester.fastTest(`https://www.youtube.com`).catch(() => onError("timeout connecting to youtube servers"))
                     if (test1Result.status !== 200) {
-                        proxyStats.bad.push({ url: proxy, err: "Proxy is unable to connect to youtube servers" })
-                        proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
-
-                        io.emit("newProxiesStats", proxyStats)
-                        return
+                        throw new Error("Proxy is unable to connect to youtube servers");
                     }
 
                     await new Promise((resolve, reject) => {

@@ -26,9 +26,15 @@ global.app_path = path.join(__dirname);
 
 require("ansicolor").nice
 
-if (!fs.existsSync(path.join(__dirname, "../main/cache/raw_guests"))){
-    fs.mkdirSync(path.join(__dirname, "../main/cache/raw_guests"), { recursive: true });
+const rawGuestsDir = path.join(__dirname, "../main/cache/raw_guests");
+if (fs.existsSync(rawGuestsDir)) {
+    try {
+        fs.rmSync(rawGuestsDir, { recursive: true, force: true });
+    } catch (err) {
+        console.error("Failed to clean raw_guests cache on startup:", err.message);
+    }
 }
+fs.mkdirSync(rawGuestsDir, { recursive: true });
 
 require("../main/server.cjs");
 

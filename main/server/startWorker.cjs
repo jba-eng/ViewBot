@@ -299,25 +299,19 @@ async function startYoutubeWorker(job, worker, browser, wtfp, userDataDir, proce
         let [clear_storage_err] = await to(browser.clearStorage())
         if (clear_storage_err) return processErr(`Error clearing storage: ${clear_storage_err}`)
 
-        let [init_loader_err] = await to(browser.initLoader())
-        if (init_loader_err) return processErr(`Error initializing the browser: ${init_loader_err}`)
-
-        
-
         let [new_page_err, newPg] = await to(browser.newPage())
         page = newPg
         if (new_page_err) return processErr(`Error starting a new page: ${new_page_err}`)
     }
 
-    // Pre-flight GWS handshake to populate cookies on page load
-    let preflightUrl = "https://www.google.com";
-    if (job.referer && job.referer.startsWith("http")) {
-        preflightUrl = job.referer;
-    }
-    let [gws_err] = await to(page.page.goto(preflightUrl, { timeout: 20000, waitUntil: "domcontentloaded" }));
-    if (gws_err) console.log(`Worker ${worker.id} Warning: pre-flight warning: ${gws_err.message}`);
-    else {
-        // Wait a natural delay on the referring page to build history and align referrer
+    let preflightUrl = job.referer && job.referer.startsWith("http")
+        ? job.referer
+        : "https://www.google.com";
+    let [gws_err] = await to(page.page.goto(preflightUrl, {
+        timeout: 20000,
+        waitUntil: "commit"
+    }));
+    if (!gws_err) {
         await page.page.waitForTimeout(Math.floor(Math.random() * 2000) + 1500);
     }
 
@@ -390,15 +384,14 @@ async function startRumbleWorker(job, worker, browser, wtfp, userDataDir, proces
         if (clear_storage_err) return processErr(`Error clearing storage: ${clear_storage_err}`)
     }
 
-    // Pre-flight GWS handshake to populate cookies on page load
-    let preflightUrl = "https://www.google.com";
-    if (job.referer && job.referer.startsWith("http")) {
-        preflightUrl = job.referer;
-    }
-    let [gws_err] = await to(page.page.goto(preflightUrl, { timeout: 20000, waitUntil: "domcontentloaded" }));
-    if (gws_err) console.log(`Worker ${worker.id} Warning: pre-flight warning: ${gws_err.message}`);
-    else {
-        // Wait a natural delay on the referring page to build history and align referrer
+    let preflightUrl = job.referer && job.referer.startsWith("http")
+        ? job.referer
+        : "https://www.google.com";
+    let [gws_err] = await to(page.page.goto(preflightUrl, {
+        timeout: 20000,
+        waitUntil: "commit"
+    }));
+    if (!gws_err) {
         await page.page.waitForTimeout(Math.floor(Math.random() * 2000) + 1500);
     }
 

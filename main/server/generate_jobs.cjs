@@ -118,7 +118,8 @@ async function generateJobs(work_video, work_proxies) {
 
     if(video_id){
         try {
-            videoInfo = await selfbot_api.getVideoInfo(video_id)
+            let auditProxy = work_proxies.length > 0 ? work_proxies[Math.floor(Math.random() * work_proxies.length)] : undefined;
+            videoInfo = await selfbot_api.getVideoInfo(video_id, auditProxy)
         } catch (err) {
             console.error(`[generateJobs] Failed to get video info for ${work_video.id}:`, err.message);
             return;
@@ -128,7 +129,8 @@ async function generateJobs(work_video, work_proxies) {
 
         try {
             video_id = await rumble_core.getVideoID(work_video.id);
-            videoInfo = await rumble_selfbot_api.getVideoInfo(video_id)
+            let auditProxy = work_proxies.length > 0 ? work_proxies[Math.floor(Math.random() * work_proxies.length)] : undefined;
+            videoInfo = await rumble_selfbot_api.getVideoInfo(video_id, auditProxy)
         } catch (err) {
             console.error(`[generateJobs] Failed to get Rumble video info for ${work_video.id}:`, err.message);
             return;

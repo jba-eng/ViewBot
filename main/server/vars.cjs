@@ -34,6 +34,7 @@ module.exports = {
         concurrencyInterval: 20,
         stop_spawning_on_overload: true,
         send_reminders: true,
+        enable_sticky_sessions: false,
     
         headless: false,
         auto_skip_ads: true,

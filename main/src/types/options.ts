@@ -3,6 +3,7 @@ export type Options = {
     skip_ads_after: number[],
     close_server_on_finish: boolean,
     send_reminders: boolean,
+    enable_sticky_sessions?: boolean,
 
     headless: boolean,
     concurrency: number,

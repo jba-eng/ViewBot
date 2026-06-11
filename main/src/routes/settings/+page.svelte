@@ -188,6 +188,21 @@
 						</div>
 					</div>
 				{/if}
+
+				<div class="setting_div">
+					<div class="same_line">
+						<h2 class="setting_name">
+							Sticky proxy sessions:
+							<span class="info-icon" data-tooltip="Enables rotating proxy session stickiness (appends _session-xxxx to user). Only check if your proxy provider supports/requires it.">ⓘ</span>
+						</h2>
+
+						<input
+							class="setting_checkbox"
+							type="checkbox"
+							bind:checked={data.enable_sticky_sessions}
+						/>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

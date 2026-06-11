@@ -21,7 +21,7 @@ async function removeUserDataDir(userDataDir, maxRetries = 5, delay = 500) {
             fs.rmSync(userDataDir, { recursive: true, force: true });
             return;
         } catch (err) {
-            if (err.code === 'EBUSY' && attempt < maxRetries - 1) {
+            if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries - 1) {
                 await new Promise(r => setTimeout(r, delay * (attempt + 1)));
                 continue;
             }
@@ -57,6 +57,7 @@ function convertProxyFormat(proxyString) {
 
 function injectStickySession(proxyUrl) {
     if (!proxyUrl || proxyUrl === "direct" || proxyUrl === "direct://") return proxyUrl;
+    if (!settings.enable_sticky_sessions) return proxyUrl;
     let converted = convertProxyFormat(proxyUrl);
     try {
         let url = new URL(converted);
@@ -452,9 +453,8 @@ function startWorker(job, worker, userDataDir, wtfp) {
         let botType = job.isRumble ? rumble_selfbot_api : youtube_selfbot_api
 
         userDataDir = path.join(__dirname, `../../cache/raw_guests/${userDataDir}`);
-        if (!fs.existsSync(userDataDir)) {
-            fs.mkdirSync(userDataDir, { recursive: true });
-        }
+        await removeUserDataDir(userDataDir);
+        fs.mkdirSync(userDataDir, { recursive: true });
 
         let watchdogTimeout = (settings.timeout + 60) * 1000;
         let watchdogTimer;
@@ -485,6 +485,7 @@ function startWorker(job, worker, userDataDir, wtfp) {
             muteAudio: true,
             useAV1: settings.use_AV1,
 
+            fingerprinter_service_key: process.env.FINGERPRINT_KEY || '',
             workingFolder: path.join(__dirname, "../../browserEngine/"),
             fingerprint: {
                 viewport: {

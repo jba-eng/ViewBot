@@ -17,6 +17,10 @@ const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, shell } = require("electron");
 
+// Disable Chromium sandbox in Electron to prevent Windows filesystem permission issues (Access is denied 0x5)
+app.commandLine.appendSwitch('no-sandbox');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+
 //global.app_path = app.getPath("appData");
 global.app_path = path.join(__dirname);
 

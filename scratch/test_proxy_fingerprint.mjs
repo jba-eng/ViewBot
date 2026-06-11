@@ -60,6 +60,7 @@ console.log("==========================================\n");
     try {
         console.log("Launching selfbot browser with proxy and randomized fingerprint...");
         let bot = new selfbot({
+            workingFolder: path.resolve("./browserEngine"),
             headless: false,
             muteAudio: true,
             proxy: stickiedProxy,

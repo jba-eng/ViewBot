@@ -16,15 +16,23 @@ let nullPipe = new Writable({ write: (a, b, cb) => cb() })
 nullPipe.setMaxListeners(0)
 
 function convertProxyFormat(proxyString) {
-    let protocolParts = proxyString.split("://")
-    let protocol = protocolParts[0]
-    let parts = protocolParts[1].split(":")
-
-    if (parts.length == 4) {
-        return `${protocol}://${parts[2]}:${parts[3]}@${parts[0]}:${parts[1]}`
-    } else {
-        return proxyString
+    if (!proxyString) return proxyString;
+    let protocol = "http";
+    let workingString = proxyString;
+    if (proxyString.includes("://")) {
+        let protocolParts = proxyString.split("://");
+        protocol = protocolParts[0];
+        workingString = protocolParts[1];
     }
+    
+    if (protocol === "socks5h") protocol = "socks5";
+    if (protocol === "socks4h") protocol = "socks4";
+    
+    let parts = workingString.split(":");
+    if (parts.length === 4) {
+        return `${protocol}://${parts[2]}:${parts[3]}@${parts[0]}:${parts[1]}`;
+    }
+    return `${protocol}://${workingString}`;
 }
 
 
@@ -71,7 +79,8 @@ function checkProxies(proxies) {
             workArray.push(() => new Promise(async (resolve, reject) => {
                 proxy = proxy.url
 
-                let tester = new createProxyTester(proxy, settings.timeout * 1000)
+                let formattedProxy = convertProxyFormat(proxy)
+                let tester = new createProxyTester(formattedProxy, settings.timeout * 1000)
 
                 children.push({
                     kill: () => {
@@ -89,7 +98,7 @@ function checkProxies(proxies) {
                     let currentWorkingOn = workingOn.findIndex((v) => v.url === proxy);
                     workingOn[currentWorkingOn].stage = "checking proxy format (1)"
 
-                    let urlStatus = tester.testProxyURL(proxy);
+                    let urlStatus = tester.testProxyURL(formattedProxy);
                     if (!urlStatus.isValid) {
                         proxyStats.bad.push({ url: proxy, err: "Proxy is malformed" })
                         proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)

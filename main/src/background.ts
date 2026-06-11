@@ -23,6 +23,7 @@ let opts: Options = {
     auto_skip_ads: true,
     default_proxy_protocol: "http",
     send_reminders: true,
+    enable_sticky_sessions: false,
     use_AV1: false,
     user_agents_categories: [],
     user_agents_selected: [],

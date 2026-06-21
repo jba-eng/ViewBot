@@ -201,7 +201,12 @@ async function startWorking() {
                             let oldTry = old_good_proxies.find((v) => v.url == newProxyUrl)
 
                             if (oldTry) {
-                                proxyStats.good.push({ url: newProxyUrl })
+                                proxyStats.good.push({ 
+                                    url: newProxyUrl,
+                                    latency: oldTry.latency,
+                                    timezone: oldTry.timezone || "America/New_York",
+                                    locale: oldTry.locale || "en-US"
+                                })
                             } else {
                                 proxyStats.untested.push({ url: newProxyUrl })
                             }
@@ -307,7 +312,11 @@ async function startWorking() {
                         currentWorker += 1
 
                         // Dynamically select proxy at runtime based on 15-minute history check
-                        currentJob.proxy = selectProxyForJob(currentJob.id);
+                        let selectedProxyUrl = selectProxyForJob(currentJob.id);
+                        currentJob.proxy = selectedProxyUrl;
+                        let proxyObj = proxyStats.good.find(p => p.url === selectedProxyUrl);
+                        currentJob.proxyTimezone = proxyObj ? (proxyObj.timezone || "America/New_York") : "America/New_York";
+                        currentJob.proxyLocale = proxyObj ? (proxyObj.locale || "en-US") : "en-US";
 
                         let tempWorker = currentWorker
                         let userDataDir = tempWorker

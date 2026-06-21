@@ -472,6 +472,8 @@ function startWorker(job, worker, userDataDir, wtfp) {
             headless: settings.headless,
             userDataDir: userDataDir,
             proxy: injectStickySession(job.proxy),
+            proxyTimezone: job.proxyTimezone,
+            proxyLocale: job.proxyLocale,
             autoSkipAds: settings.auto_skip_ads,
             timeout: settings.timeout * 1000,
 

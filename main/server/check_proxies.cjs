@@ -36,6 +36,27 @@ function convertProxyFormat(proxyString) {
 }
 
 
+const countryMap = {
+    "united states": { timezone: "America/New_York", locale: "en-US" },
+    "canada": { timezone: "America/Toronto", locale: "en-CA" },
+    "united kingdom": { timezone: "Europe/London", locale: "en-GB" },
+    "germany": { timezone: "Europe/Berlin", locale: "de-DE" },
+    "france": { timezone: "Europe/Paris", locale: "fr-FR" },
+    "sweden": { timezone: "Europe/Stockholm", locale: "sv-SE" },
+    "netherlands": { timezone: "Europe/Amsterdam", locale: "nl-NL" },
+    "italy": { timezone: "Europe/Rome", locale: "it-IT" },
+    "spain": { timezone: "Europe/Madrid", locale: "es-ES" },
+    "australia": { timezone: "Australia/Sydney", locale: "en-AU" },
+    "brazil": { timezone: "America/Sao_Paulo", locale: "pt-BR" },
+    "india": { timezone: "Asia/Kolkata", locale: "en-IN" },
+    "japan": { timezone: "Asia/Tokyo", locale: "ja-JP" },
+    "south korea": { timezone: "Asia/Seoul", locale: "ko-KR" },
+    "ukraine": { timezone: "Europe/Kyiv", locale: "uk-UA" },
+    "poland": { timezone: "Europe/Warsaw", locale: "pl-PL" },
+    "russia": { timezone: "Europe/Moscow", locale: "ru-RU" },
+    "singapore": { timezone: "Asia/Singapore", locale: "en-SG" },
+};
+
 function checkProxies(proxies) {
     return new Promise(async (resolve, reject) => {
         proxies = proxies.filter((v) => v.url !== "direct://");
@@ -235,7 +256,14 @@ function checkProxies(proxies) {
                         }, 1000 * settings.timeout)
                     }).catch(onError)
 
-                    proxyStats.good.push({ url: proxy, latency: test1Result.latency })
+                    let countryStr = (mullvadData && mullvadData.country) ? mullvadData.country.toLowerCase() : "";
+                    let geo = countryMap[countryStr] || { timezone: "America/New_York", locale: "en-US" };
+                    proxyStats.good.push({ 
+                        url: proxy, 
+                        latency: test1Result.latency,
+                        timezone: geo.timezone,
+                        locale: geo.locale
+                    })
                     proxyStats.untested = proxyStats.untested.filter((v) => v.url !== proxy)
 
                     finished++

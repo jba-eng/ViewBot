@@ -82,17 +82,9 @@ git commit -m "refactor: inline convertProxyFormat in startWorker.cjs, remove du
 - Modify: `main/server/init_start.cjs:L53-63`
 
 **Steps:**
-1. Inline `computeStringDate` into `MakeLog` L89:
-```js
-let date = new Date();
-date = `${date.getDate()}-${date.getMonth()}-${date.getFullYear()}`;
-```
-2. Inline `computeAccureteTime` into `MakeLog` L91:
-```js
-let t = new Date();
-let currentTime = `${t.getDate()}-${t.getMonth()}-${t.getFullYear()} ${t.getHours()}:${t.getMinutes()}:${t.getSeconds()}.${t.getMilliseconds()}`;
-```
-3. Delete `computeStringDate` (L53-57) and `computeAccureteTime` (L59-63) functions
+1. Inline `computeStringDate` into `MakeLog` L89
+2. Inline `computeAccureteTime` into `MakeLog` L91
+3. Delete both functions
 4. Verify: `node -c main/server/init_start.cjs`
 5. Commit: `git commit -m "shrink: inline computeStringDate and computeAccureteTime into MakeLog"`
 
@@ -116,20 +108,6 @@ let currentTime = `${t.getDate()}-${t.getMonth()}-${t.getFullYear()} ${t.getHour
 
 **Objective:** 137 lines for a JSON fallback DB that only handles ~15 SQL patterns. The `prepare().run()` switch statement (L39-86) is a big switch with regex matching.
 
-**Files:**
-- Modify: `main/server/json_db_fallback.cjs`
-
-**Steps:**
-1. The `run` method's big if/else chain (L39-86) can be collapsed to a simpler map:
-```js
-const ops = {
-    'good_proxies': (d, v) => { d.good_proxies = {id:1, data:v}; },
-    'proxies': (d, v) => { d.proxies = {id:1, data:v}; },
-    // ... etc
-};
-```
-2. But the simplest ponytail cut: the fallback is only loaded when sqlite3 fails. Most users have sqlite3. Consider: does this file even need to be 137 lines? The `get` method (L87-104) does 8 regex matches per query.
-
 **Decision:** Keep it as-is for now — it works. Mark as "defer" for later.
 
 **Skip for now.** Mark file for later audit.
@@ -140,15 +118,7 @@ const ops = {
 
 **Objective:** `deepCopy` (L53-55) uses `JSON.parse(JSON.stringify())`. `deepEqual` (L57-63) is a recursive object comparator. Modern JS has `structuredClone()`.
 
-**Files:**
-- Modify: `main/src/background.ts:L53-63`
-
-**Steps:**
-1. Replace `deepCopy(obj)` with `structuredClone(obj)`
-2. Replace `deepEqual(a, b)` with `structuredClone(a) === structuredClone(b)` — or even simpler, use `JSON.stringify(a) === JSON.stringify(b)` since these are plain data objects
-3. Delete both functions
-4. Verify syntax
-5. Commit: `git commit -m "stdlib: replace deepCopy/deepEqual with structuredClone"`
+**Completed:** Replaced with `structuredClone`. Commit already made.
 
 ---
 
@@ -156,47 +126,22 @@ const ops = {
 
 **Objective:** 756 lines, mostly static data. Identify what can be moved to JSON or removed.
 
-**Files:**
-- Review: `main/server/fingerprint_generator.cjs`
+**Decision:** Move font lists and feature flags to separate JSON data files. Schedule as a separate task.
 
-**Key cuts:**
-1. **`genChromeFeatures()` (L338-393)** — 55 lines of static feature flags. Many are always `true`. Could be a data file.
-2. **`genSafariFeatures()` (L395-424)** — 29 lines, similar pattern.
-3. **`genFirefoxFeatures()` (L426-456)** — 30 lines, similar pattern.
-4. **Font arrays** — windowsChrome (L42-77: 36 lines), macosSafari (L103-132: 30 lines), linuxFirefox (L174-196: 23 lines). These are static data.
-5. **`windowsEdge.fonts` is null** (L232) — so 36 lines of Windows Chrome fonts are duplicated in Edge but unused for Edge.
-
-**Decision:** Move font lists and feature flags to separate JSON data files. This is a bigger refactor — schedule as a separate task.
-
-**Sub-task 8a:** Extract `genChromeFeatures`, `genSafariFeatures`, `genFirefoxFeatures` into a `features.json` data file and replace with a lookup function.
+**Sub-task 8a:** Extract `genChromeFeatures`, `genSafariFeatures`, `genFirefoxFeatures` into a `features.json` data file.
 **Sub-task 8b:** Move font arrays to `fonts.json`.
 
 ---
 
 ## Task 9: Remove unused rumble_core import in generate_jobs.cjs
 
-**Objective:** Check if Rumble videos are actually used.
-
-**Files:**
-- Review: `main/server/generate_jobs.cjs`
-
-**Steps:**
-1. `rumble_core` is imported at L1, used only in `generateJobs` L131 for `getVideoID`
-2. `rumble_selfbot_api` is imported at L14 and used at L133
-3. If Rumble is rarely/never used, these are dead code
-4. **Keep for now** — both are used in the Rumble code path
+**Decision:** Keep for now — both `rumble_core` and `rumble_selfbot_api` are used in the Rumble code path.
 
 ---
 
 ## Task 10: Audit startWorker.cjs ad logic
 
-**Objective:** Ad handling in `watchInterval` (L86-213) is complex with `adDetected`, `adPlayTime`, `watch_ads` setting. Check if `settings.watch_ads` is ever set.
-
-**Files:**
-- Check: `main/server/vars.cjs` — no `watch_ads` field (only `auto_skip_ads` and `max_seconds_ads`)
-- Check: `main/src/background.ts` — no `watch_ads` field
-
-**Finding:** `settings.watch_ads` (L111 in startWorker.cjs) is NEVER defined in vars or background. The `if (settings.watch_ads)` branch at L111 is effectively dead code — it will always be `undefined` (falsy), so only the `else` branch at L124-129 runs.
+**Finding:** `settings.watch_ads` (L111 in startWorker.cjs) is NEVER defined in vars or background. The `if (settings.watch_ads)` branch at L111 is effectively dead code.
 
 **Steps:**
 1. Remove the dead `if (settings.watch_ads)` branch (L111-129), keep only the else body
@@ -207,40 +152,19 @@ const ops = {
 
 ## Task 11: Clean up init_start.cjs — remove unused random() function
 
-**Objective:** `random()` function (L37-47) is used in extensions loading and `launchServer`. Check if it's still needed.
-
-**Files:**
-- Check: `global.makeGlobal` at L370 exports `random`
-
-**Steps:**
-1. Verify `random` is used by extensions (L420: `transformStatus` calls `startWorking`, not `random`)
-2. `generate_jobs.cjs` uses `random()` at L66, L67, L70, L71, L80, etc. — but it uses its own `random()` from the global scope
-3. Keep it — used globally
+**Decision:** Keep it — used globally via `global.makeGlobal`.
 
 ---
 
 ## Task 12: Verify console.log monkey-patch usage
 
-**Objective:** `console.log/error/warn` are monkey-patched at L452-469 to also call `MakeLog`. Check if this is needed.
-
-**Files:**
-- `main/server/init_start.cjs:L452-469`
-
-**Steps:**
-1. These patches make every console call also write to log files
-2. `MakeLog` writes to dated log files — this is useful for audit
-3. Keep — it's the only way log files get written
+**Decision:** Keep — it's the only way log files get written.
 
 ---
 
 ## Task 13: Check for duplicate clamp function
 
-**Objective:** `clamp` is defined in both `init_start.cjs` (L37-47, but only as `random`) and `startWorker.cjs` (L34-36).
-
-**Files:**
-- Check: Both files
-
-**Finding:** `init_start.cjs` has `random()` at L37-47. `startWorker.cjs` has `clamp()` at L34-36. These are different functions. No duplicate.
+**Finding:** `init_start.cjs` has `random()` at L37-47. `startWorker.cjs` has `clamp()` at L34-36. Different functions.
 
 **Skip.**
 
@@ -252,16 +176,214 @@ Already in Task 2.
 
 ---
 
+## Task 15: Setup Jest + ts-jest config for ViewBot project
+
+**Objective:** Create test infrastructure with Jest, ts-jest, and proper config for the ViewBot monorepo structure (both CJS server and TypeScript extension).
+
+**Files to create:**
+- `main/server/jest.config.js` — Jest config for server (CJS, Node.js environment, `transform` for .cjs files)
+- `main/src/jest.config.js` — Jest config for extension (TS, browser-like environment)
+- `main/server/tsconfig.test.json` — TS config for test compilation
+- `main/src/tsconfig.test.json` — TS config for test compilation
+- Root `package.json` update: add `"test": "jest"` script and jest/ts-jest dev dependencies
+
+**Steps:**
+1. `npm install --save-dev jest ts-jest @types/jest ts-node typescript` in ViewBot root
+2. Create `jest.config.js` at root level (monorepo-style):
+```js
+module.exports = {
+  testEnvironment: 'node',
+  testMatch: ['**/tests/**/*.test.{js,ts,cjs}'],
+  moduleFileExtensions: ['js', 'ts', 'cjs', 'json'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+    '^.+\\.cjs$': 'ts-jest'
+  },
+  moduleNameMapper: {
+    '^rumble-core$': '<rootDir>/../node_modules/rumble-core',
+    '^youtube-selfbot-api$': '<rootDir>/../node_modules/youtube-selfbot-api'
+  },
+  coverageDirectory: 'coverage',
+  collectCoverageFrom: [
+    'main/server/**/*.cjs',
+    'main/src/**/*.ts'
+  ],
+  testTimeout: 15000
+};
+```
+3. Create `tsconfig.test.json`:
+```json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "CommonJS",
+    "types": ["jest", "node"]
+  },
+  "include": ["main/server/**/*.ts", "main/src/**/*.ts", "tests/**/*.ts"]
+}
+```
+4. Update `package.json` with test script
+5. Verify: `npx jest --version`
+6. Commit
+
+---
+
+## Task 16: Write unit tests for ViewBot
+
+**Objective:** Create comprehensive test suite to ensure app works as well as before simplification changes.
+
+### Unit Tests (pure functions, no server/DOM):
+
+**convertProxyFormat tests** (`main/server/tests/check_proxies.test.cjs`):
+- `convertProxyFormat('user:pass@host:port')` → `'http://user:pass@host:port'`
+- `convertProxyFormat('user:pass@host:port:3128')` → `'http://user:pass@host:port:3128'` (4 parts → username:password@host:port)
+- `convertProxyFormat('socks5h://user:pass@host:port')` → `'socks5://user:pass@host:port'`
+- `convertProxyFormat('socks4h://host:port')` → `'socks4://host:port'`
+- `convertProxyFormat('http://host:port')` → `'http://host:port'`
+- `convertProxyFormat('host:port')` → `'http://host:port'` (default protocol)
+- `convertProxyFormat(null/undefined)` → returns as-is
+
+**random() tests** (`main/server/tests/init_start.test.cjs`):
+- `random(min, max)` returns integer in `[min, max)`
+- `random(array)` returns element from array
+- `random(100)` returns integer in `[0, 100)`
+
+**clamp() tests** (`main/server/tests/util.test.cjs`):
+- `clamp(5, 0, 10)` → `5`
+- `clamp(-1, 0, 10)` → `0`
+- `clamp(15, 0, 10)` → `10`
+- `clamp(0, 0, 10)` → `0`
+- `clamp(10, 0, 10)` → `10`
+- `clamp(5, 5, 5)` → `5` (equal bounds)
+
+**calculateAction() tests** (`main/server/tests/generate_jobs.test.cjs`):
+- `calculateAction({likePercent:100, dislikePercent:0, subscribePercent:0})` → `['like', 'subscribe' or 'none']`
+- `calculateAction({likePercent:0, dislikePercent:100, subscribePercent:0})` → `['dislike', 'none']`
+- `calculateAction({likePercent:0, dislikePercent:0, subscribePercent:100})` → `['like' or 'none', 'subscribe']`
+- `calculateAction({likePercent:0, dislikePercent:0, subscribePercent:0})` → `['none']`
+- `calculateAction({likePercent:50, dislikePercent:50, subscribePercent:50})` → valid action array
+
+**generateJob() tests** (`main/server/tests/generate_jobs.test.cjs`):
+- With account: job has `account` with like/dislike/subscribe/comment flags, actionAt timestamps
+- Without account: job has no `account` field, `accountOnlyTypes` filtered from watch_types
+- Filter parsing: `duration: '5 minutes'` → `filters.duration: '5'`
+- Filter parsing: `sort_by: 'view count'` → `filters.sort_by: 'view_count'`
+- Livestream: sets `watch_time` from `livestream_watchtime`, `isLivestream: true`
+- Video: sets `watch_time` from `watch_time` array via `random(min, max)`
+- Watch time adjustments: `likeAt + 10` etc. push `watch_time` up if needed
+- Referer: picks from `work_video.referrals`
+- Keyword: picks from `[...keywords, title]`
+- Proxy: picks from `work_proxies`
+- `generateJob` pushes to `global.jobs` array
+
+**json_db_fallback.cjs tests** (`main/server/tests/json_db_fallback.test.cjs`):
+- `loadDB()` returns correct default structure when file doesn't exist
+- `loadDB()` parses valid JSON file
+- `saveDB()` writes valid JSON
+- `createFallbackDB().prepare().run()` handles all SQL patterns (INSERT/UPDATE for proxies, good_proxies, videos, options, watch_time, views, bandwidth)
+- `createFallbackDB().prepare().get()` handles all SELECT patterns
+- `createFallbackDB().prepare().all()` handles all SELECT * patterns
+- Session store: set/get/destroy operations
+
+**fingerprint_generator.cjs tests** (`main/server/tests/fingerprint_generator.test.cjs`):
+- `generateProfile()` returns valid fingerprint object with all required fields
+- `generateBatch(n)` returns n fingerprints
+- `pickWeightedFamily()` respects family weights (40% windowsChrome)
+- Generated UA strings match browser patterns
+- `generateHeaders()` produces valid header arrays for each family
+- `generatePluginsForFamily()` returns correct plugin arrays
+- `generateMimesForFamily()` returns correct MIME type arrays
+- Fingerprint JSON is parseable and complete
+
+**background.ts structuredClone tests** (`main/src/tests/background.test.ts`):
+- `structuredClone()` correctly clones nested objects/arrays
+- `structuredClone()` handles circular refs via DOMException
+- `publishData()` cycle: data → publish → receive → clone → verify matches original
+
+### Integration Tests:
+
+**verifyToken middleware** (`main/server/tests/verifyToken.test.cjs`):
+- Valid token with status >= required → `req.goodToken = true`, calls `next()`
+- Valid token with status < required → `res.sendStatus(403)`
+- No token, statusRequired > 1 → `res.sendStatus(403)`
+- No token, statusRequired <= 1 → calls `next()` (public path)
+- Unknown subpath with lastRoute='api' → `res.sendStatus(404)`
+
+**neededRanks hierarchy** (`main/server/tests/neededRanks.test.cjs`):
+- Verify `login: 0` (public)
+- Verify `health, workingStatus, latest_version, version, proxiesStats, video_details, view_stats, video_info, view_workers_stats, view_extensions, patreon_status, free_status: 1`
+- Verify `videos, proxies, settings: 2`
+- Verify `add_job, remove_job, edit_job: 3`
+- Verify `change_settings, change_password: 4`
+
+**DB operations** (`main/server/tests/db.test.cjs`):
+- `dbRun()` executes INSERT/UPDATE/DELETE
+- `dbRunWithValues()` executes parameterized queries
+- `dbGet()` executes single row SELECT
+- `dbGetAll()` executes multi-row SELECT
+- `dbGetValues()` executes single row SELECT with values
+- SQLite3 fallback: all operations work with fallback DB
+
+**API route responses** (`main/server/tests/api_routes.test.cjs`):
+- Each `GET /api/get/*` route returns correct JSON structure
+- Each `POST /api/post/*` route returns correct response
+- `GET /api/get/health` returns system info fields
+- `GET /api/get/settings` returns current settings
+- `GET /api/get/proxies` returns proxy list
+- `GET /api/get/videos` returns video list
+- `POST /api/post/login` handles login flow
+- `POST /api/post/change_password` handles password change
+
+**Socket.IO events** (`main/server/tests/socket.test.cjs`):
+- Socket joins room on connect
+- `io.emit('newProxiesStats')` broadcasts to all clients
+- `io.emit('health')` broadcasts health data
+- Socket event handlers: decisionTaken, log_message, videos, proxies, accounts_import, comments_import
+
+**startWorker.cjs tests** (`main/server/tests/startWorker.test.cjs`):
+- `injectStickySession()` adds session ID to proxy URL when enabled
+- `injectStickySession()` returns proxy URL as-is when disabled or direct
+- `removeUserDataDir()` retries on EBUSY/EPERM
+- `removeUserDataDir()` succeeds on first try if no error
+- `removeUserDataDir()` returns after max retries
+
+**login endpoint** (`main/server/tests/login.test.cjs`):
+- Creates user key with hashed password
+- Returns token on success
+- Returns error on duplicate username
+- Password stored correctly
+
+**change_password endpoint** (`main/server/tests/changePassword.test.cjs`):
+- Updates password hash for existing key
+- Returns success/error correctly
+
+---
+
 ## Summary of Tasks by Priority
 
-| # | File | Cut | Lines Saved |
-|---|------|-----|-------------|
-| 1 | startWorker.cjs | Inline convertProxyFormat, remove duplicate | ~20 |
-| 2 | init_server.cjs | Remove dead verifyLoginStatus | ~6 |
-| 3 | init_start.cjs | Remove dead MessageUser | ~13 |
-| 4 | init_start.cjs | Inline computeStringDate/Time | ~15 |
-| 7 | background.ts | structuredClone instead of deepCopy | ~10 |
-| 10 | startWorker.cjs | Remove dead watch_ads branch | ~19 |
-| 8a | fingerprint_generator.cjs | Extract feature flags to JSON | ~100 (deferred) |
+|| # | File | Cut | Lines Saved |
+||---|------|-----|-------------|
+|| 1 | startWorker.cjs | Inline convertProxyFormat, remove duplicate | ~20 |
+|| 2 | init_server.cjs | Remove dead verifyLoginStatus | ~6 |
+|| 3 | init_start.cjs | Remove dead MessageUser | ~13 |
+|| 4 | init_start.cjs | Inline computeStringDate/Time | ~15 |
+|| 7 | background.ts | structuredClone instead of deepCopy | ~10 |
+|| 10 | startWorker.cjs | Remove dead watch_ads branch | ~19 |
+|| 8a | fingerprint_generator.cjs | Extract feature flags to JSON | ~100 (deferred) |
 
 **Total immediate savings: ~83 lines of dead/unnecessary code.**
+
+---
+
+## Test Coverage Goals
+
+After all tests are written and passing:
+- Unit tests for ALL pure functions (convertProxyFormat, clamp, random, calculateAction, generateJob)
+- Integration tests for ALL middleware (verifyToken, helmet, session, bearerToken)
+- Integration tests for ALL API routes (health, version, settings, proxies, videos, login, change_password)
+- Integration tests for ALL DB operations (sqlite3 + fallback)
+- Integration tests for ALL socket events
+- Integration tests for worker lifecycle (injectStickySession, removeUserDataDir)
+- **Passing before changes → Passing after changes = no regression**

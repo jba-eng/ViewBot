@@ -42,25 +42,13 @@ let opts: Options = {
     mouse_randomness: 0.5,
 };
 
-let lastData: Options = deepCopy(opts);
+let lastData: Options = structuredClone(opts);
 let dataChangeFunc = (opts: any) => { }
 let newData = (data: any) => {
     opts = data
 }
 
 let dataChanged = (newFunc: any) => dataChangeFunc = newFunc
-
-function deepCopy(obj: any): any {
-    return JSON.parse(JSON.stringify(obj))
-}
-
-function deepEqual(a: any, b: any): boolean {
-    if (a && b && typeof a == 'object' && typeof b == 'object') {
-        if (Object.keys(a).length != Object.keys(b).length) return false;
-        for (var key in a) if (!deepEqual(a[key], b[key])) return false;
-        return true;
-    } else return a === b
-}
 
 
 function publishData() {
@@ -69,20 +57,20 @@ function publishData() {
 
 axios.get("/api/settings").then((result) => {
     opts = result.data
-    lastData = deepCopy(result.data)
+    lastData = structuredClone(result.data)
     dataChangeFunc(opts)
 })
 
 setInterval(() => {
-    if (!deepEqual(opts, lastData)) {
-        lastData = deepCopy(opts)
+    if (JSON.stringify(opts) !== JSON.stringify(lastData)) {
+        lastData = structuredClone(opts)
         publishData()
     }
 }, 100)
 
 socket.on("settings", (data) => {
     opts = data
-    lastData = deepCopy(opts)
+    lastData = structuredClone(opts)
 
     dataChangeFunc(opts)
 })

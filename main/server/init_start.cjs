@@ -46,25 +46,6 @@ function random(min, max) {
     }
 }
 
-function computeTime(time) {
-    return new Date(time.getFullYear(), time.getMonth(), time.getDate(), time.getHours(), 0, 0)
-}
-
-function computeStringDate() {
-    let time = new Date();
-
-    return `${time.getDate()}-${time.getMonth()}-${time.getFullYear()}`
-}
-
-function computeAccureteTime() {
-    let time = new Date();
-
-    return `${time.getDate()}-${time.getMonth()}-${time.getFullYear()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}.${time.getMilliseconds()}`
-}
-
-function getCurrentTime() {
-    return computeTime(new Date())
-}
 
 let currentLogs = {}
 
@@ -86,9 +67,9 @@ function ReadLatestLog(date, filePath) {
 }
 
 async function MakeLog(type, message) {
-    let date = computeStringDate()
+    let date = `${new Date().getDate()}-${new Date().getMonth()}-${new Date().getFullYear()}`
     let filePath = path.join(__dirname, "../../logs", `${date}.log`)
-    let currentTime = computeAccureteTime()
+    let currentTime = `${new Date().getDate()}-${new Date().getMonth()}-${new Date().getFullYear()} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}.${new Date().getMilliseconds()}`
     if (!currentLogs[date]) {
         ReadLatestLog(date, filePath)
     }
@@ -367,8 +348,7 @@ let makeGlobal = {
     __dirname, require,
     extensions,
     lastHealth: {},
-    random,
-    computeTime, getCurrentTime,
+   random,
     MakeLog, MessageUser
 }
 
@@ -418,8 +398,7 @@ for (let extensionPath of readdirSync(path.join(__dirname, "../../extensions")))
             getVideos: () => global.videos,
             transformProxies: (newProxies) => global.proxies = newProxies,
             transformStatus: (newStatus) => { global.workingStatus = newStatus; startWorking() },
-            server_version,
-            computeTime, getCurrentTime,
+              server_version,
         },
         require: {
             external: true,

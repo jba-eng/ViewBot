@@ -130,7 +130,7 @@ global.watchInterval = setInterval(() => {
         let increase = !workingHolder.job.video_info.isLive ? currentWatchTime : (Date.now() - workingHolder.start_time) / 1000
 
         var newAmount = increase - workingHolder.lastWatchtime
-        var currentTime = getCurrentTime().getTime()
+        var currentTime = new Date().setHours(0,0,0,0)
 
         var alreadyFound = stats.watch_time.filter((v) => v.date == currentTime)
         if (!alreadyFound[0]) {
@@ -562,7 +562,7 @@ function startWorker(job, worker, userDataDir, wtfp) {
 
             len = parseFloat((len * 1e-6).toFixed(2))
 
-            var currentTime = getCurrentTime().getTime()
+            var currentTime = new Date().setHours(0,0,0,0)
 
             var alreadyFound = stats.bandwidth.filter((v) => v.date == currentTime)
             if (!alreadyFound[0]) {

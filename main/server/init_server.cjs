@@ -19,7 +19,6 @@ async function initServer(){
     app.use(express.json())
     
     app.use(verifyToken)
-    app.use(verifyLoginStatus)
     
     app.use("/api", route)
     app.use(handler)
@@ -50,11 +49,6 @@ async function initServer(){
         } else {
             return next()
         }
-    }
-    
-    async function verifyLoginStatus(req, res, next) {
-        req.session.loggedIn = true;
-        return next();
     }
     
     io.use((socket, next) => sessionMiddleware(socket.request, {}, next));

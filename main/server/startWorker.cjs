@@ -35,30 +35,24 @@ function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num
 }
 
-function convertProxyFormat(proxyString) {
-    if (!proxyString) return proxyString;
-    let protocol = "http";
-    let workingString = proxyString;
-    if (proxyString.includes("://")) {
-        let protocolParts = proxyString.split("://");
-        protocol = protocolParts[0];
-        workingString = protocolParts[1];
-    }
-    
-    if (protocol === "socks5h") protocol = "socks5";
-    if (protocol === "socks4h") protocol = "socks4";
-    
-    let parts = workingString.split(":");
-    if (parts.length === 4) {
-        return `${protocol}://${parts[2]}:${parts[3]}@${parts[0]}:${parts[1]}`;
-    }
-    return `${protocol}://${workingString}`;
-}
+
 
 function injectStickySession(proxyUrl) {
     if (!proxyUrl || proxyUrl === "direct" || proxyUrl === "direct://") return proxyUrl;
     if (!settings.enable_sticky_sessions) return proxyUrl;
-    let converted = convertProxyFormat(proxyUrl);
+    let protocol = "http";
+    let workingString = proxyUrl;
+    if (proxyUrl.includes("://")) {
+        let protocolParts = proxyUrl.split("://");
+        protocol = protocolParts[0];
+        workingString = protocolParts[1];
+    }
+    if (protocol === "socks5h") protocol = "socks5";
+    if (protocol === "socks4h") protocol = "socks4";
+    let parts = workingString.split(":");
+    let converted = parts.length === 4
+        ? `${protocol}://${parts[2]}:${parts[3]}@${parts[0]}:${parts[1]}`
+        : `${protocol}://${workingString}`;
     try {
         let url = new URL(converted);
         if (url.username) {
